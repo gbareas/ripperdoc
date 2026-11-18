@@ -1,0 +1,363 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RipperdocReview",
+  "type": "object",
+  "required": [
+    "round",
+    "slug",
+    "date",
+    "intake",
+    "verifications",
+    "verdict",
+    "confidence",
+    "confidence_reason",
+    "issues",
+    "actions",
+    "insights",
+    "questions",
+    "previous_issues",
+    "keep_or_revert",
+    "stop",
+    "stop_reason",
+    "worklog"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "round": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "slug": {
+      "type": "string",
+      "minLength": 1
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "intake": {
+      "type": "object",
+      "required": [
+        "goal",
+        "claim",
+        "acceptance_criteria",
+        "criteria_source",
+        "artifacts_missing"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "claim": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "criteria_source": {
+          "enum": [
+            "given",
+            "inferred"
+          ]
+        },
+        "artifacts_missing": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "dossier_links": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "code_review_file": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "verifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim",
+          "method",
+          "reported",
+          "observed",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "claim": {
+            "type": "string",
+            "minLength": 1
+          },
+          "method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reported": {
+            "type": "string",
+            "minLength": 1
+          },
+          "observed": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "confirmed",
+              "contradicted",
+              "could_not_verify"
+            ]
+          },
+          "rerun_dir": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 3
+    },
+    "verdict": {
+      "enum": [
+        "accept",
+        "revise",
+        "reject"
+      ]
+    },
+    "confidence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "confidence_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "category",
+          "what",
+          "why",
+          "fix",
+          "question"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "enum": [
+              "blocking",
+              "nice_to_have"
+            ]
+          },
+          "category": {
+            "enum": [
+              "answers_ask",
+              "evidence",
+              "assumption",
+              "edge_case",
+              "contradiction",
+              "falsifiability",
+              "claim_strength",
+              "prior_work",
+              "controls",
+              "baselines",
+              "confound",
+              "power",
+              "reproducibility",
+              "pre_specification",
+              "statistics",
+              "code_defect",
+              "other"
+            ]
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "what": {
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fix": {
+            "type": "string",
+            "minLength": 1
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "object",
+      "required": [
+        "do",
+        "revise",
+        "discard"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "do": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "revise": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "discard": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "code_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ref",
+          "affects_result",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "affects_result": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "issue_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "insights": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "maxItems": 3
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "previous_issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "resolved",
+              "partially_resolved",
+              "unresolved",
+              "regressed"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "keep_or_revert": {
+      "enum": [
+        "keep",
+        "revert",
+        "n/a"
+      ]
+    },
+    "stop": {
+      "type": "boolean"
+    },
+    "stop_reason": {
+      "enum": [
+        "no_blocking_issues",
+        "round_cap",
+        "no_progress",
+        "continue"
+      ]
+    },
+    "worklog": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "reviewer_disagreements": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
