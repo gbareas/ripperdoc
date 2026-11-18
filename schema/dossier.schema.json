@@ -1,0 +1,342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RipperdocDossier",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "updated",
+    "project",
+    "sources_read",
+    "hypotheses",
+    "work_done",
+    "literature",
+    "conventions",
+    "locations",
+    "risks",
+    "gaps"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "updated": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "name",
+        "root",
+        "goal",
+        "research_questions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "research_questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "sources_read": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "kind",
+          "mtime"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "context",
+              "findings",
+              "log",
+              "protocol",
+              "paper",
+              "bib",
+              "readme",
+              "code",
+              "data",
+              "other"
+            ]
+          },
+          "mtime": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "statement",
+          "origin",
+          "status",
+          "pre_registered",
+          "source"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin": {
+            "enum": [
+              "stated",
+              "inferred"
+            ]
+          },
+          "status": {
+            "enum": [
+              "open",
+              "untested",
+              "supported",
+              "refuted",
+              "criterion_not_met",
+              "superseded",
+              "unknown"
+            ]
+          },
+          "pre_registered": {
+            "type": "boolean"
+          },
+          "frozen_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ripperdoc_assessment": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "work_done": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "what",
+          "status",
+          "source",
+          "review"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "what": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "running",
+              "planned",
+              "abandoned",
+              "refuted"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "date": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tests_hypotheses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "review": {
+            "enum": [
+              "not_reviewed",
+              "accept",
+              "revise",
+              "reject"
+            ]
+          },
+          "review_file": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "literature": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "citation",
+          "claim",
+          "relevance",
+          "found_via",
+          "read_by_ripperdoc"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "citation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "claim": {
+            "type": "string",
+            "minLength": 1
+          },
+          "relevance": {
+            "type": "string",
+            "minLength": 1
+          },
+          "found_via": {
+            "enum": [
+              "producer_bib",
+              "producer_text",
+              "ripperdoc_search"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "read_by_ripperdoc": {
+            "enum": [
+              "full_text",
+              "abstract",
+              "citation_only"
+            ]
+          },
+          "bears_on": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "conventions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "rule",
+          "source"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rule": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "what",
+          "path"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "what": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

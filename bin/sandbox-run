@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# sandbox-run CMD [ARGS...]
+#   Run CMD with the whole filesystem read-only and no network.
+#   Writable: one fresh run directory, exported as $RIPPERDOC_OUT (also HOME, TMPDIR,
+#   XDG_CACHE_HOME and MPLCONFIGDIR point inside it). Earlier run directories stay readable.
+#   A producer script that tries to write into the project fails with "Read-only file system"
+#   instead of overwriting anything.
+#   Env: RIPPERDOC_SCRATCH (scratch root, default ${TMPDIR:-/tmp}/ripperdoc),
+#        RIPPERDOC_TIMEOUT (seconds, default 1800).
+#   Shell syntax goes inside:  sandbox-run bash -c 'cd src && python x.py --out "$RIPPERDOC_OUT"'
+#   Pixi projects:              sandbox-run pixi run --as-is python script.py
+set -euo pipefail
+if [[ $# -eq 0 || $1 == -h || $1 == --help ]]; then sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0; fi
+command -v bwrap >/dev/null || { echo "sandbox-run: bwrap not installed; do not rerun unsandboxed" >&2; exit 97; }
+ROOT="${RIPPERDOC_SCRATCH:-${TMPDIR:-/tmp}/ripperdoc}"
+TIMEOUT="${RIPPERDOC_TIMEOUT:-1800}"
+mkdir -p "$ROOT"
+ROOT="$(realpath "$ROOT")"
+RUN="$(mktemp -d "$ROOT/run-$(date +%Y%m%d-%H%M%S)-XXXX")"
+mkdir -p "$RUN/home" "$RUN/cache" "$RUN/mpl"
+extra=()
+case "$PWD" in /tmp/*) [[ "$PWD" == "$ROOT"* ]] || extra+=(--ro-bind "$PWD" "$PWD");; esac
+echo "[sandbox-run] writable: $RUN | rest read-only | no network | timeout ${TIMEOUT}s" >&2
+exec bwrap --ro-bind / / --dev-bind /dev /dev --proc /proc \
+  --tmpfs /tmp --ro-bind "$ROOT" "$ROOT" --bind "$RUN" "$RUN" "${extra[@]}" \
+  --unshare-net --die-with-parent \
+  --setenv RIPPERDOC_OUT "$RUN" --setenv HOME "$RUN/home" --setenv TMPDIR "$RUN" \
+  --setenv XDG_CACHE_HOME "$RUN/cache" --setenv MPLCONFIGDIR "$RUN/mpl" \
+  --chdir "$PWD" timeout "$TIMEOUT" "$@"
