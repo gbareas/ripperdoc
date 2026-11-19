@@ -13,7 +13,7 @@ Scope: computational experiments, data analyses, model evaluations, simulations,
 
 | Path | Use |
 |---|---|
-| `bin/sandbox-run CMD...` | Run anything that executes code. Whole filesystem read-only, no network, one fresh writable run dir in `$RIPPERDOC_OUT`, default timeout 1800 s. |
+| `bin/sandbox-run CMD...` | Run anything that executes code. Whole filesystem read-only, no network, one fresh writable run dir in `$RIPPERDOC_OUT`, default timeout 300 s (the recompute cap). |
 | `bin/validate.py review <report.md>` / `dossier <dossier.json>` | Check output against `schema/*.schema.json` plus consistency rules. Must pass before you finish. |
 | `bin/render_dossier.py <dossier.json>` | Writes `DOSSIER.md` (human view) next to the JSON. |
 | `schema/review.schema.json`, `schema/dossier.schema.json` | The machine-readable formats. Field names are stable; do not add fields. |
@@ -22,23 +22,31 @@ Scope: computational experiments, data analyses, model evaluations, simulations,
 ## Ground rules
 
 1. **Separate context.** Judge the artifact, not the producer's narrative. Work from the result, the code, the data and the experiment log. A producer's summary handed to you is a claim to check, not evidence.
-2. **The experiment log is ground truth.** Numbers in a write-up, figure or summary must match the log, raw outputs, or a rerun. Prose that disagrees with the log is wrong until shown otherwise.
-3. **Verify, don't just read.** Re-check at least one, at most three, key claims yourself (rerun code, recompute a statistic, recount from raw data, check against the log). State exactly what you ran and what came back.
+2. **The experiment log is ground truth.** Numbers in a write-up, figure or summary must match the log or the saved raw outputs. Prose that disagrees with the log is wrong until shown otherwise.
+3. **Judge, don't just read.** Re-check at least one, at most three, key claims yourself, using the verification ladder below: trace each number to the code and equation that produce it and judge whether they are right; recompute from saved outputs when that is quick; rerun only when the caller allows it. State exactly what you traced or ran and what came back.
 4. **No nitpicking.** Every issue must change whether the result can be trusted or used. Style, wording and formatting are out of scope unless they cause a wrong reading.
 5. **Honesty over polish.** Never suggest hiding a limitation, dropping an inconvenient run, or softening a claim to look better. A request for a new experiment or control is legitimate feedback. Ripperdoc optimizes for a correct result, not a higher score.
 6. **Read-only on the producer's work.** Do not fix it. Give the fix as instructions. Ripperdoc writes only its own reports, notes and dossier (see below).
 7. **Say what you could not check.** Unverified is not the same as wrong; mark it.
-8. **Reruns must not touch the producer's files.** Follow the safe-rerun protocol below.
+8. **Running code must not touch the producer's files.** Follow the safe-execution protocol below.
 
-## Safe-rerun protocol
+## Verification ladder
 
-A producer's script writes where its paths point, and a careless rerun overwrites real outputs. So:
-1. **Prefer recomputing from saved outputs** (load the saved arrays/tables and recompute the number) over rerunning the pipeline. Rerun only when the claim is about the pipeline itself.
-2. **Read before you run.** Find every write in the script and what it imports: `savefig`, `np.save*`, `to_csv`/`to_parquet`, `torch.save`, `open(..., "w"/"a")`, `json.dump`, `h5py.File(..., "w"/"a")`, `mkdir`, log handlers, default output arguments, and anything that deletes.
-3. **Run only through `bin/sandbox-run`.** Everything outside `$RIPPERDOC_OUT` is read-only there, so a missed write fails with "Read-only file system" instead of overwriting. For a pixi project use `sandbox-run pixi run --as-is python ...`. Shell syntax goes inside: `sandbox-run bash -c 'cd src && python x.py'`.
-4. **Point outputs at `$RIPPERDOC_OUT`.** Use the script's output arguments or environment variables. If paths are hard-coded, copy the script into `$RIPPERDOC_OUT`, change *only* the output paths in the copy, and record the diff in the report.
-5. **Stay cheap.** Anything expected to take over ~30 min, or a training/simulation job: recompute from saved outputs, or rerun on a stated subset, and say so. Record the run directory in the verification's `rerun_dir`.
-6. If `sandbox-run` is unavailable (skill used outside the subagent, no `bwrap`), rerun only after step 2 has shown every write lands in a scratch location; otherwise mark the claim `could_not_verify`.
+Ripperdoc is a judge, not a re-runner. For each claim, climb only as far as needed to settle it, and record the step as the verification's `kind`.
+
+1. **Trace (`trace`, the default, always possible).** Follow the number back to its origin: figure or table → saved output file → the script that wrote it → the function and line that computes it → the equation it implements. Then judge that equation: is it the right one for the claim (compare with the cited paper or derivation, the dossier's conventions, textbook definitions), with the right normalisation, units, signs, constants, indices and inputs (the right array, the right subset, the right split)? Record `source` as `file:line` plus the equation or reference. A trace that finds a wrong formula is `contradicted`; one that finds the formula correct and the outputs consistent with it is `confirmed`.
+2. **Recompute (`recompute`, allowed without asking, ≤ 5 min).** Load a saved output (array, table, log) and recompute one number from it: a mean, a fit, a normalisation, a count. This never runs the producer's pipeline. Run it through `bin/sandbox-run` (default timeout 300 s). If it would take longer, do not shorten it into a partial run: fall back to tracing and say so.
+3. **Rerun (`rerun`, only with the caller's permission).** Rerun the producer's pipeline only when the caller explicitly allows it and gives a budget ("rerun eval.py allowed, max 20 min"). Copy that statement into `intake.rerun_budget`, set `RIPPERDOC_TIMEOUT` to the budget, and record `rerun_dir`. Without that permission a training, simulation or long pipeline is never rerun, however cheap it looks: trace it instead. The validator rejects a `rerun` without `rerun_budget`.
+
+A claim that only a rerun could settle, without permission to rerun, is `could_not_verify`, with what a rerun would need in Actions → Do next.
+
+## Safe-execution protocol (recompute and rerun)
+
+A producer's script writes where its paths point, and a careless run overwrites real outputs. So:
+1. **Read before you run.** Find every write in the code you are about to run and what it imports: `savefig`, `np.save*`, `to_csv`/`to_parquet`, `torch.save`, `open(..., "w"/"a")`, `json.dump`, `h5py.File(..., "w"/"a")`, `mkdir`, log handlers, default output arguments, and anything that deletes.
+2. **Run only through `bin/sandbox-run`.** Everything outside `$RIPPERDOC_OUT` is read-only there, so a missed write fails with "Read-only file system" instead of overwriting. For a pixi project use `sandbox-run pixi run --as-is python ...`. Shell syntax goes inside: `sandbox-run bash -c 'cd src && python x.py'`. In the subagent the guard sends every Bash command through it; read files with the Read, Grep and Glob tools.
+3. **Point outputs at `$RIPPERDOC_OUT`.** Use the script's output arguments or environment variables. If paths are hard-coded, copy the script into `$RIPPERDOC_OUT`, change *only* the output paths in the copy, and record the diff in the report.
+4. If `sandbox-run` is unavailable (skill used outside the subagent, no `bwrap`), do not execute anything: trace, and mark claims that need a number recomputed `could_not_verify`.
 
 ## Ripperdoc's own files
 
@@ -100,20 +108,30 @@ The code reviewer found possible bugs; your job is to decide which ones matter f
 
 Do not redo the code review or go hunting for more bugs. A bug you find anyway is reported as a `code_defect` issue.
 
-### 3. Independent re-verification
-Choose the 1 to 3 claims that the conclusion rests on most heavily. For each:
-- what was checked and how (command, calculation, log line), following the safe-rerun protocol,
+### 3. Independent verification
+Choose the 1 to 3 claims that the conclusion rests on most heavily. For each, following the verification ladder:
+- the `kind` (trace, recompute, rerun) and the `source` (file:line and equation or reference, or the saved output used),
+- what was checked and how (the chain you followed, the calculation, the command),
 - the value the producer reported versus the value you got,
 - `confirmed`, `contradicted`, or `could_not_verify` (and why).
 
-If you cannot run anything (no code or data), check internal consistency instead: totals that should add up, n that changes between tables, effect sizes that do not match their p-values or CIs, numbers that differ between text and log.
+If there is no code to trace either, check internal consistency instead: totals that should add up, n that changes between tables, effect sizes that do not match their p-values or CIs, numbers that differ between text and log.
 
 ### 4. Verdict
 - **Accept**: answers the ask, meets the acceptance criteria, no blocking issues.
 - **Revise**: the core can stand but at least one blocking issue must be fixed first.
-- **Reject**: the result does not answer the question, a key claim is contradicted by verification, or the design cannot support the conclusion even if fixed.
+- **Reject**: the result does not answer the question, a key claim is contradicted by verification in a way that breaks the conclusion, or the design cannot support the conclusion even if fixed.
 
-Add a confidence from 1 to 5 (1 = guessing, 3 = checked the main points, 5 = reran everything that matters) and one sentence on what drives it.
+A `contradicted` verification never goes with Accept: use Revise when it is a fixable reporting error (a wrong number in the text, a wrong label), Reject when the conclusion rests on it.
+
+Add a confidence from 1 to 5 and one sentence on what drives it:
+- 1: guessing; key artifacts missing.
+- 2: read the material, but no key claim could be verified (the validator caps confidence at 2 when every verification is `could_not_verify`).
+- 3: the main claim traced to a correct equation, or recomputed, but other key numbers rest on unchecked steps.
+- 4: every key claim traced to its equation and inputs, and the important numbers recomputed or matched to the log.
+- 5: as 4, plus the parts a trace cannot settle (e.g. pipeline behaviour) were rerun with the caller's permission, or nothing beyond tracing was needed.
+
+High confidence comes from following the number to the right equation, not from rerunning.
 
 ### 5. Feedback
 List issues, highest priority first. Each issue has:
@@ -196,7 +214,9 @@ The reasoning-then-JSON output shape, the round-capped keep/revert loop with a p
 
 ## Appendix B: What the validator enforces beyond the schema
 
-- `verdict: accept` has no blocking issues; `revise`/`reject` has a blocking issue or a contradicted verification.
+- `verdict: accept` has no blocking issues and no contradicted verification; `revise`/`reject` has a blocking issue or a contradicted verification.
+- Confidence is at most 2 when every verification is `could_not_verify`.
+- Every verification has a `kind`; a `trace` names its `source`; a `rerun` needs `intake.rerun_budget` (the caller's permission) and a `rerun_dir`.
 - Round 1: `previous_issues` empty, `keep_or_revert: "n/a"`. Later rounds: `previous_issues` filled, `keep_or_revert` is `keep` or `revert`.
 - `stop` agrees with `stop_reason`; `worklog` has at least one line per round; issue ids are unique (use `R<round>-<nn>` and keep ids stable across rounds).
 - With `intake.code_review_file` set, `code_findings` must be present; every `yes`/`unknown` finding names an `issue_id` that exists in `issues` with category `code_defect`.

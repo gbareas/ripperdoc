@@ -1,0 +1,8 @@
+{
+  "n_patients": 60,
+  "n_genes": 2000,
+  "panel_size": 20,
+  "heldout_acc_mean": 0.9259999999999999,
+  "heldout_acc_std": 0.05499090833947007,
+  "repeats": 50
+}

@@ -38,7 +38,8 @@ Write the findings, exactly as reported (file, line, summary, failure scenario, 
 Spawn the `ripperdoc` agent (foreground, since you need its verdict) with:
 - goal, claim, acceptance criteria (or the frozen protocol), slug and review directory,
 - paths to code, outputs, log/findings entry,
-- the code-review file from step 2, with this instruction: "For each CR finding, decide whether it affects the computation behind the claimed numbers. Verify the most consequential one if it could change the conclusion."
+- rerun permission only if the user gave it, quoted with its time budget (e.g. "rerun eval.py allowed, max 20 min"). Otherwise say nothing: Ripperdoc then traces and recomputes from saved outputs, and never reruns training or simulations on its own,
+- the code-review file from step 2, with this instruction: "For each CR finding, decide whether it affects the computation behind the claimed numbers. Verify the most consequential one if it could change the conclusion, by tracing whether the buggy line feeds the claimed number."
 
 Do not add your own opinion of the result to the prompt. Ripperdoc should judge the artifacts, not your summary.
 

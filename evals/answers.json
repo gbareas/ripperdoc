@@ -1,0 +1,22 @@
+{
+  "_note": "Answer key. Never copy this file into a case directory: run.sh copies only evals/cases/<id>/ to a scratch folder.",
+  "cases": {
+    "case01": {"type": "flawed", "step": "trace", "flaw": "PSD computed as |FFT|^2 without the periodogram normalisation 1/(fs*N) (and the one-sided factor 2), so the integrated PSD is ~2e6 times the variance; the 'aliased power' conclusion is an artefact.",
+               "file": "psd.py", "lines": [12], "keywords": ["normali[sz]", "1/\\(?fs", "fs ?\\* ?N", "Parseval", "scal(e|ing)"]},
+    "case02": {"type": "flawed", "step": "trace", "flaw": "Planck law in frequency form (B_nu) evaluated and its maximum read off on a wavelength axis; Wien's law applies to B_lambda. Converting needs the Jacobian c/lambda^2. The 879 nm peak is the B_nu peak, not a model error.",
+               "file": "spectrum.py", "lines": [9, 10, 12], "keywords": ["B_?nu", "B_?lambda", "Jacobian", "per (unit )?frequency", "c ?/ ?(lam|λ)", "frequency form", "d ?nu ?/ ?d ?(lam|λ)"]},
+    "case03": {"type": "flawed", "step": "trace", "flaw": "Sign error: accel returns -omega0^2 x + gamma v instead of - gamma v, so the code models negative damping; energy grows at exactly gamma, as expected for the wrong sign.",
+               "file": "oscillator.py", "lines": [10], "keywords": ["sign", "\\+ ?gamma ?\\* ?v", "- ?gamma", "negative damping", "anti-?damping"]},
+    "case04": {"type": "flawed", "step": "recompute", "flaw": "Write-up says 0.86 vs 0.79 (+7 points); results.csv gives mean 0.811 vs 0.790, +2.1 points, so the pre-agreed 5-point criterion is not met.",
+               "file": "results.csv", "lines": [], "keywords": ["0\\.81", "2\\.1", "0\\.021", "not met", "does not match"]},
+    "case05": {"type": "flawed", "step": "trace", "flaw": "Best of 5 seeds (0.881) reported against a single baseline run; mean over seeds is 0.777, below the 0.781 baseline. Cherry-picked seed, no variance, baseline not run over seeds.",
+               "file": "train_log.txt", "lines": [4], "keywords": ["cherry", "best (of|seed)", "selected", "mean", "0\\.77", "seeds?"]},
+    "case06": {"type": "flawed", "step": "trace", "flaw": "Panel selected by correlation with response on all 60 patients (and standardised on all) before the train/test split: selection leakage. On pure noise this gives ~0.93; selection must happen inside each training split.",
+               "file": "analysis.py", "lines": [10, 11, 12], "keywords": ["leak", "selection", "before (the )?split", "all (60 )?patients", "inside (each|the) (training )?(split|fold)", "circular"]},
+    "case07": {"type": "flawed", "step": "trace", "flaw": "line_flux.py integrates raw (line + background) instead of bgsub; the background-subtracted flux is 3.0, matching the model.",
+               "file": "line_flux.py", "lines": [9], "keywords": ["raw", "bgsub", "background(-| )subtract", "3\\.0"]},
+    "case08": {"type": "clean"},
+    "case09": {"type": "clean"},
+    "case10": {"type": "clean", "no_rerun_required": true}
+  }
+}
