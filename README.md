@@ -9,7 +9,8 @@ A research supervisor for Claude Code. Ripperdoc questions results and experimen
 | `SKILL.md` | The procedure, rules and output format. Single source of truth. |
 | `agents/ripperdoc.md` | Subagent template (thin: reads `SKILL.md`; tools, guard hook). |
 | `skills/experiment-review/SKILL.md` | Companion skill: `/code-review` on the experiment's code, then Ripperdoc with those findings. |
-| `bin/sandbox-run` | Runs code with the whole filesystem read-only (bubblewrap), no network, one writable run dir, 5 min default timeout. |
+| `bin/sandbox-run` | Runs code with the whole filesystem read-only (bubblewrap on Linux, sandbox-exec on macOS), no network, one writable run dir, 5 min default timeout. |
+| `bin/merge_reviews.py` | Drafts the merged review from two ensemble members, carrying every blocking issue. |
 | `bin/validate.py` | Validates reviews and dossiers against `schema/` plus consistency rules (stdlib only). |
 | `bin/render_dossier.py` | Renders `dossier.json` to `DOSSIER.md`. |
 | `hooks/guard.py` | PreToolUse hook for the subagent: writes only in `ripperdoc_reviews/` or scratch, code runs only sandboxed, read-only git. |
@@ -19,7 +20,7 @@ A research supervisor for Claude Code. Ripperdoc questions results and experimen
 
 ## Install
 
-Requirements: Claude Code, `python3`, `bwrap` (bubblewrap; Linux).
+Requirements: Claude Code, `python3`, and for running code: `bwrap` (bubblewrap) on Linux, or the built-in `sandbox-exec` on macOS. Without either, Ripperdoc still traces but cannot recompute.
 
 ```bash
 git clone <this repo> && cd ripperdoc && ./install.sh
@@ -34,7 +35,9 @@ From any project folder in Claude Code:
 - **Review a result**: "Use ripperdoc to review <result / file / experiment>. Goal: ... Claim: ..."
 - **Allow a rerun** (otherwise it never reruns pipelines): add "Rerun of <script> allowed, max <N> min".
 - **After an experiment finishes**: "Run experiment-review on <experiment>" (code review first, then Ripperdoc).
-- **Only learn the project**: "Have ripperdoc onboard this project" (builds the dossier, no review).
+- **Only learn the project**: "Have ripperdoc onboard this project" (builds the dossier from your documents, no review).
+- **Literature search** (off by default): "Have ripperdoc search the literature for this project", or add "with literature search" to a review request.
+- **Second reviewer**: `experiment-review` runs two Ripperdoc reviews on different models and merges them (blocking issues are a union, never averaged). Say "single reviewer" to skip it.
 - **Next round** after fixes: ask again with the same work; Ripperdoc finds its earlier report.
 
 To make the post-experiment review automatic in a project, add to its `CLAUDE.md`:

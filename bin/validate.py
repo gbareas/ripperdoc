@@ -45,7 +45,62 @@ def check(v, s, path, errs):
             elif s.get("additionalProperties") is False: errs.append(f"{path}: unknown field '{k}'")
 
 
-def review_rules(r, errs):
+SEVERITY = {"accept": 0, "revise": 1, "reject": 2}
+
+
+def load_review(path):
+    text = open(path).read()
+    if path.endswith(".md"):
+        blocks = re.findall(r"```json\s*\n(.*?)\n```", text, re.S)
+        if not blocks:
+            raise ValueError(f"{path}: no ```json block found")
+        text = blocks[-1]
+    return json.loads(text)
+
+
+def ensemble_rules(r, path, errs):
+    """A merged review must account for every member's blocking issues and contradicted verifications."""
+    if r.get("reviewer"):
+        errs.append("a review cannot be both an ensemble member (reviewer) and a merge (ensemble_of)")
+    base = os.path.dirname(os.path.realpath(path))
+    members = {}
+    for rel in r["ensemble_of"]:
+        try:
+            m = load_review(os.path.join(base, rel))
+        except (OSError, ValueError) as e:
+            errs.append(f"ensemble_of {rel}: cannot read ({e})"); continue
+        rid = m.get("reviewer")
+        if not rid:
+            errs.append(f"ensemble_of {rel}: member has no reviewer id"); continue
+        if rid in members:
+            errs.append(f"ensemble_of {rel}: duplicate reviewer id {rid}")
+        if m.get("slug") != r.get("slug") or m.get("round") != r.get("round"):
+            errs.append(f"ensemble_of {rel}: slug/round differ from the merged review")
+        members[rid] = m
+    carried = {ref for i in r.get("issues", []) for ref in i.get("merged_from", [])}
+    dismissed = {d.get("ref") for d in r.get("dismissed", [])}
+    known = set()
+    for rid, m in members.items():
+        for i in m.get("issues", []):
+            ref = f"{rid}:{i.get('id')}"
+            known.add(ref)
+            if i.get("severity") == "blocking" and ref not in carried and ref not in dismissed:
+                errs.append(f"blocking issue {ref} is neither merged (merged_from) nor dismissed with a reason")
+        for n, v in enumerate(m.get("verifications", []), 1):
+            ref = f"{rid}:V{n}"
+            known.add(ref)
+            if v.get("status") == "contradicted" and ref not in dismissed and r.get("verdict") == "accept":
+                errs.append(f"verification {ref} is contradicted and not dismissed, so the merged verdict cannot be accept")
+    for ref in carried | dismissed:
+        if members and ref not in known:
+            errs.append(f"{ref}: no such issue or verification in the member reviews")
+    if members and r.get("confidence", 0) > max(m.get("confidence", 0) for m in members.values()):
+        errs.append("merged confidence is higher than every member's")
+    if members and not r.get("dismissed") and SEVERITY.get(r.get("verdict"), 0) < max(SEVERITY.get(m.get("verdict"), 0) for m in members.values()):
+        errs.append("merged verdict is milder than a member's, but nothing was dismissed to justify it")
+
+
+def review_rules(r, errs, path=""):
     issues = r.get("issues", [])
     ids = [i.get("id") for i in issues]
     if len(ids) != len(set(ids)): errs.append("issues: duplicate ids")
@@ -77,6 +132,13 @@ def review_rules(r, errs):
     if len(r.get("worklog", [])) < r.get("round", 1): errs.append("worklog needs one line per round")
     if r.get("intake", {}).get("code_review_file") and "code_findings" not in r:
         errs.append("intake.code_review_file is set but code_findings is missing")
+    intake = r.get("intake", {})
+    if intake.get("criteria_source") in ("protocol", "dossier") and not intake.get("criteria_ref"):
+        errs.append(f"criteria_source {intake.get('criteria_source')} needs criteria_ref (protocol file and hash, or dossier entry)")
+    if r.get("ensemble_of"):
+        ensemble_rules(r, path, errs)
+    elif r.get("dismissed") or any(i.get("merged_from") for i in issues):
+        errs.append("dismissed / merged_from are only for a merged review (set ensemble_of)")
     by_id = {i.get("id"): i for i in issues}
     for f in r.get("code_findings", []):
         if f.get("affects_result") in ("yes", "unknown"):
@@ -96,24 +158,21 @@ def dossier_rules(d, errs):
         if w.get("review") != "not_reviewed" and not w.get("review_file"): errs.append(f"work_done {w.get('id')}: review_file missing")
     for h in d.get("hypotheses", []):
         if h.get("pre_registered") and not h.get("frozen_ref"): errs.append(f"hypothesis {h.get('id')}: pre_registered but no frozen_ref")
+    if any(l.get("found_via") == "ripperdoc_search" for l in d.get("literature", [])) and not d.get("literature_search"):
+        errs.append("literature found by ripperdoc_search but no literature_search record (searches run only when the caller asks)")
 
 
 def main():
     if len(sys.argv) != 3 or sys.argv[1] not in ("review", "dossier"):
         print(__doc__); sys.exit(2)
     kind, path = sys.argv[1:]
-    text = open(path).read()
-    if path.endswith(".md"):
-        blocks = re.findall(r"```json\s*\n(.*?)\n```", text, re.S)
-        if not blocks: print(f"{path}: no ```json block found"); sys.exit(1)
-        text = blocks[-1]
     try:
-        data = json.loads(text)
-    except json.JSONDecodeError as e:
-        print(f"invalid JSON: {e}"); sys.exit(1)
+        data = load_review(path)
+    except ValueError as e:
+        print(e if not isinstance(e, json.JSONDecodeError) else f"invalid JSON: {e}"); sys.exit(1)
     errs = []
     check(data, json.load(open(os.path.join(SCHEMA_DIR, f"{kind}.schema.json"))), "$", errs)
-    (review_rules if kind == "review" else dossier_rules)(data, errs)
+    review_rules(data, errs, path) if kind == "review" else dossier_rules(data, errs)
     if errs:
         print("\n".join(errs)); sys.exit(1)
     print(f"valid {kind}: {path}")

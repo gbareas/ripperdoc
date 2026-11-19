@@ -71,6 +71,7 @@ ALLOWED = [
     f"python3 {VAL} review /work/proj/ripperdoc_reviews/r.md",
     f"{VAL} dossier ripperdoc_reviews/dossier.json",
     f"python3 {ROOT}/bin/render_dossier.py ripperdoc_reviews/dossier.json",
+    f"python3 {ROOT}/bin/merge_reviews.py ripperdoc_reviews/m.json ripperdoc_reviews/a.md ripperdoc_reviews/b.md",
 ]
 
 

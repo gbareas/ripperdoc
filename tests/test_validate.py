@@ -6,7 +6,7 @@ VAL = os.path.join(ROOT, "bin", "validate.py")
 
 BASE = {
     "round": 1, "slug": "psd-peak", "date": "2026-11-20",
-    "intake": {"goal": "g", "claim": "c", "acceptance_criteria": ["a"], "criteria_source": "given", "artifacts_missing": []},
+    "intake": {"goal": "g", "claim": "c", "acceptance_criteria": ["a"], "criteria_source": "caller", "artifacts_missing": []},
     "verifications": [{"kind": "trace", "claim": "peak PSD = 2.0", "method": "followed fig2 -> psd.npy -> analysis.py",
                        "source": "analysis.py:41, one-sided periodogram, Parseval normalisation",
                        "reported": "2.0", "observed": "formula correct", "status": "confirmed"}],
