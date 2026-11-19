@@ -1,0 +1,6 @@
+{
+  "checkpoint": "epoch199",
+  "test_acc": 0.912,
+  "balanced_acc": 0.9120820865788594,
+  "n_test": 3000
+}

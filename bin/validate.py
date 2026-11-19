@@ -51,8 +51,21 @@ def review_rules(r, errs):
     if len(ids) != len(set(ids)): errs.append("issues: duplicate ids")
     blocking = [i for i in issues if i.get("severity") == "blocking"]
     if r.get("verdict") == "accept" and blocking: errs.append("verdict accept with blocking issues")
-    if r.get("verdict") in ("revise", "reject") and not blocking and not any(v.get("status") == "contradicted" for v in r.get("verifications", [])):
+    vers = r.get("verifications", [])
+    if r.get("verdict") in ("revise", "reject") and not blocking and not any(v.get("status") == "contradicted" for v in vers):
         errs.append(f"verdict {r.get('verdict')} needs a blocking issue or a contradicted verification")
+    if r.get("verdict") == "accept" and any(v.get("status") == "contradicted" for v in vers):
+        errs.append("verdict accept but a verification is contradicted: use revise (fixable reporting error) or reject")
+    if vers and all(v.get("status") == "could_not_verify" for v in vers) and r.get("confidence", 0) > 2:
+        errs.append("confidence above 2 but no verification succeeded (all could_not_verify)")
+    for n, v in enumerate(vers):
+        if v.get("kind") == "trace" and not v.get("source"):
+            errs.append(f"verifications[{n}]: a trace must name its source (file:line and equation or reference)")
+        if v.get("kind") == "rerun":
+            if not r.get("intake", {}).get("rerun_budget"):
+                errs.append(f"verifications[{n}]: rerun without intake.rerun_budget; reruns need the caller's explicit permission")
+            if not v.get("rerun_dir"):
+                errs.append(f"verifications[{n}]: rerun must record rerun_dir")
     if r.get("round") == 1:
         if r.get("previous_issues"): errs.append("round 1: previous_issues must be empty")
         if r.get("keep_or_revert") != "n/a": errs.append("round 1: keep_or_revert must be n/a")

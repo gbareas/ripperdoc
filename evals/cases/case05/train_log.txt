@@ -1,0 +1,5 @@
+[2026-11-10 09:12] run=mixup_s0 seed=0 epochs=40 final_val_acc=0.741 test_acc=0.744
+[2026-11-10 11:48] run=mixup_s1 seed=1 epochs=40 final_val_acc=0.786 test_acc=0.790
+[2026-11-10 14:25] run=mixup_s2 seed=2 epochs=40 final_val_acc=0.718 test_acc=0.722
+[2026-11-10 17:03] run=mixup_s3 seed=3 epochs=40 final_val_acc=0.874 test_acc=0.881
+[2026-11-10 19:40] run=mixup_s4 seed=4 epochs=40 final_val_acc=0.752 test_acc=0.749
