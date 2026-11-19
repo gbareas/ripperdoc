@@ -1,0 +1,8 @@
+{
+  "N": 4096,
+  "fs": 1000.0,
+  "peak_hz": 50.048828125,
+  "total_power_from_psd": 2.101382251037309,
+  "time_domain_variance": 2.1013822510373084,
+  "line_amplitude_v": 1.9602515068543473
+}

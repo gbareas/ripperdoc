@@ -84,6 +84,11 @@
         "code_review_file": {
           "type": "string",
           "minLength": 1
+        },
+        "rerun_budget": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only when the caller explicitly allowed rerunning the pipeline: what may be rerun and the time limit, as the caller stated it"
         }
       }
     },
@@ -92,6 +97,7 @@
       "items": {
         "type": "object",
         "required": [
+          "kind",
           "claim",
           "method",
           "reported",
@@ -100,6 +106,14 @@
         ],
         "additionalProperties": false,
         "properties": {
+          "kind": {
+            "enum": [
+              "trace",
+              "recompute",
+              "rerun"
+            ],
+            "description": "trace: followed the number to the code line and equation and judged them; recompute: recalculated it from saved outputs (<= 5 min, sandboxed); rerun: reran the producer pipeline, only with intake.rerun_budget"
+          },
           "claim": {
             "type": "string",
             "minLength": 1
@@ -126,6 +140,11 @@
           "rerun_dir": {
             "type": "string",
             "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Where the number comes from: file:line and the equation or reference it implements (trace), or the saved output file used (recompute)"
           }
         }
       },

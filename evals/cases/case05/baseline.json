@@ -1,0 +1,1 @@
+{"run": "baseline_s0", "augment": "none", "seed": 0, "epochs": 40, "test_acc": 0.781}
