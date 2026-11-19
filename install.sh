@@ -10,7 +10,11 @@ case "$RD" in "$HOME"/*) RD_STR="\$HOME/${RD#"$HOME"/}";; *) RD_STR="$RD";; esac
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 
 command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 1; }
-command -v bwrap >/dev/null || echo "warning: bwrap (bubblewrap) not found; sandbox-run will refuse to rerun code" >&2
+if [[ "$(uname -s)" == Darwin ]]; then
+  command -v sandbox-exec >/dev/null || echo "warning: sandbox-exec not found; sandbox-run will refuse to run code" >&2
+else
+  command -v bwrap >/dev/null || echo "warning: bwrap (bubblewrap) not found; sandbox-run will refuse to run code (install: apt install bubblewrap)" >&2
+fi
 
 install_one() {  # template destination
   mkdir -p "$(dirname "$2")"

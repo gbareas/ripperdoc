@@ -1,6 +1,6 @@
 ---
 name: experiment-review
-description: Close out a finished experiment or analysis run before its results are trusted: run /code-review on the code that produced the results, then the ripperdoc subagent with those findings, and report one combined verdict. Use proactively whenever an experiment, analysis, evaluation or simulation run has finished and before its numbers go into a findings document, figure or paper; also when the user says "review this experiment" or "close out <experiment>".
+description: Close out a finished experiment or analysis run before its results are trusted: run /code-review on the code that produced the results, then two independent ripperdoc reviewers on different models with those findings, merged into one verdict. Use proactively whenever an experiment, analysis, evaluation or simulation run has finished and before its numbers go into a findings document, figure or paper; also when the user says "review this experiment" or "close out <experiment>".
 ---
 
 # Experiment review: code review, then Ripperdoc
@@ -34,18 +34,29 @@ Invoke the `code-review` skill on the experiment's code:
 
 Write the findings, exactly as reported (file, line, summary, failure scenario, verdict if any), to `<review dir>/<YYYY-MM-DD>_<slug>_code-review.md`, numbered `CR-01`, `CR-02`, ... Write the file even when there are no findings, and say what was reviewed (commit range or paths, level).
 
-### 3. Ripperdoc
-Spawn the `ripperdoc` agent (foreground, since you need its verdict) with:
-- goal, claim, acceptance criteria (or the frozen protocol), slug and review directory,
+### 3. Ripperdoc: two independent reviews, then a merge
+One reviewer on the same model as the producer shares its blind spots, so by default two Ripperdoc agents review independently on different models, and a third merges them. Use a single reviewer (only step 3b, without a reviewer id, writing the final report itself) when the user asks for it or the result is exploratory and headed nowhere yet.
+
+**3a. Dossier first.** If `<review dir>/dossier.json` does not exist, spawn `ripperdoc` once to onboard only, and wait for it. Two members must not build it at the same time.
+
+**3b. Members.** Spawn two `ripperdoc` agents in the same message, both in the foreground:
+- member `a` on the session's model (no model override),
+- member `b` on a different model: the Agent tool's `model` set to `sonnet` if this session runs Opus, otherwise `opus`. If the user named a model for the second reviewer, use that.
+
+Give both exactly the same prompt, apart from the reviewer id:
+- "You are ensemble member `<id>`." and the model it runs on,
+- goal, claim, and acceptance criteria with their origin (frozen protocol and hash, project document, or "given by the user now"), slug and review directory,
 - paths to code, outputs, log/findings entry,
 - rerun permission only if the user gave it, quoted with its time budget (e.g. "rerun eval.py allowed, max 20 min"). Otherwise say nothing: Ripperdoc then traces and recomputes from saved outputs, and never reruns training or simulations on its own,
 - the code-review file from step 2, with this instruction: "For each CR finding, decide whether it affects the computation behind the claimed numbers. Verify the most consequential one if it could change the conclusion, by tracing whether the buggy line feeds the claimed number."
 
 Do not add your own opinion of the result to the prompt. Ripperdoc should judge the artifacts, not your summary.
 
+**3c. Merge.** Spawn one more `ripperdoc` agent (session model) with: "Ensemble merge for slug `<slug>`, round `<n>`. Member reports: `<path a>`, `<path b>`. Follow Ensemble mode in SKILL.md." Its report (`<date>_<slug>_r<n>.md`) is the verdict you report.
+
 ### 4. Report to the user
 Give one short combined answer:
-- Ripperdoc's verdict and confidence, and the report path.
+- Ripperdoc's merged verdict and confidence, and the report path. If the members disagreed, say so in one line and what the merge decided (`reviewer_disagreements`, `dismissed`).
 - The **Actions** lists (do next / revise / discard).
 - Code-review findings Ripperdoc judged `affects_result: yes` or `unknown`, and how many it judged irrelevant to the result.
 - What should happen next, as a recommendation. Do not start fixing anything or rerunning anything until the user says so.

@@ -63,9 +63,17 @@
         },
         "criteria_source": {
           "enum": [
-            "given",
+            "protocol",
+            "dossier",
+            "caller",
             "inferred"
-          ]
+          ],
+          "description": "Where the acceptance criteria came from, in order of precedence: a frozen/pre-registered protocol, the dossier (project documents), the caller (the producer side, at review time), or inferred by Ripperdoc"
+        },
+        "criteria_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The protocol file and hash, or the dossier entry/document section, that the criteria were taken from"
         },
         "artifacts_missing": {
           "type": "array",
@@ -232,6 +240,14 @@
           "question": {
             "type": "string",
             "minLength": 1
+          },
+          "merged_from": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z]+:"
+            },
+            "description": "Ensemble merge only: the source issues this issue stands for, as <reviewer>:<issue id>, e.g. a:R1-02"
           }
         }
       }
@@ -377,6 +393,49 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "reviewer": {
+      "type": "string",
+      "pattern": "^[a-z]+$",
+      "description": "Ensemble member id (a, b, ...) when this is one of several independent reviews to be merged"
+    },
+    "reviewer_model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Model that wrote this review, when known"
+    },
+    "ensemble_of": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Merged review only: paths (relative to this report) of the member reviews it merges"
+    },
+    "dismissed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ref",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^[a-z]+:(R\\d+-\\d+|V\\d+)$",
+            "description": "<reviewer>:<issue id> for a blocking issue, <reviewer>:V<n> for the n-th verification (1-based)"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Why it does not stand, with what was checked"
+          }
+        }
+      },
+      "description": "Merged review only: member blocking issues or contradicted verifications that the merge did not keep"
     }
   }
 }

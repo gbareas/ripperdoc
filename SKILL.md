@@ -16,6 +16,7 @@ Scope: computational experiments, data analyses, model evaluations, simulations,
 | `bin/sandbox-run CMD...` | Run anything that executes code. Whole filesystem read-only, no network, one fresh writable run dir in `$RIPPERDOC_OUT`, default timeout 300 s (the recompute cap). |
 | `bin/validate.py review <report.md>` / `dossier <dossier.json>` | Check output against `schema/*.schema.json` plus consistency rules. Must pass before you finish. |
 | `bin/render_dossier.py <dossier.json>` | Writes `DOSSIER.md` (human view) next to the JSON. |
+| `bin/merge_reviews.py <out.json> <a.md> <b.md>...` | Ensemble mode: drafts a merged review that carries every member's blocking issues. |
 | `schema/review.schema.json`, `schema/dossier.schema.json` | The machine-readable formats. Field names are stable; do not add fields. |
 | `hooks/guard.py` | Enforces read-only in the ripperdoc subagent (blocks writes outside your own folders and unsandboxed code execution). |
 
@@ -46,7 +47,7 @@ A producer's script writes where its paths point, and a careless run overwrites 
 1. **Read before you run.** Find every write in the code you are about to run and what it imports: `savefig`, `np.save*`, `to_csv`/`to_parquet`, `torch.save`, `open(..., "w"/"a")`, `json.dump`, `h5py.File(..., "w"/"a")`, `mkdir`, log handlers, default output arguments, and anything that deletes.
 2. **Run only through `bin/sandbox-run`.** Everything outside `$RIPPERDOC_OUT` is read-only there, so a missed write fails with "Read-only file system" instead of overwriting. For a pixi project use `sandbox-run pixi run --as-is python ...`. Shell syntax goes inside: `sandbox-run bash -c 'cd src && python x.py'`. In the subagent the guard sends every Bash command through it; read files with the Read, Grep and Glob tools.
 3. **Point outputs at `$RIPPERDOC_OUT`.** Use the script's output arguments or environment variables. If paths are hard-coded, copy the script into `$RIPPERDOC_OUT`, change *only* the output paths in the copy, and record the diff in the report.
-4. If `sandbox-run` is unavailable (skill used outside the subagent, no `bwrap`), do not execute anything: trace, and mark claims that need a number recomputed `could_not_verify`.
+4. If `sandbox-run` is unavailable (skill used outside the subagent, no `bwrap` on Linux), do not execute anything: trace, and mark claims that need a number recomputed `could_not_verify`.
 
 ## Ripperdoc's own files
 
@@ -63,7 +64,7 @@ All of them live in the **review directory**: the path the caller gives; otherwi
 
 A review is only as good as Ripperdoc's picture of the project: what it is trying to show, what has been tried, what the field already knows. The dossier holds that picture, in `dossier.json` (machine-readable, schema `schema/dossier.schema.json`), rendered to `DOSSIER.md` with `bin/render_dossier.py`.
 
-**When.** If the review directory has no `dossier.json`, build it before the first review (onboarding). The caller can also ask for onboarding only, or a full refresh. On every later review, compare the `mtime` of each entry in `sources_read` with the file on disk and re-read the ones that changed, and add new sources the review touched.
+**When.** If the review directory has no `dossier.json`, build it before the first review (onboarding). The caller can also ask for onboarding only, a full refresh, or a literature search on its own. On every later review, compare the `mtime` of each entry in `sources_read` with the file on disk and re-read the ones that changed, and add new sources the review touched.
 
 **How to build it.**
 1. **Project documents first.** Look for and read: project context or overview files (`PROJECT_CONTEXT.md`, `README*`, `CLAUDE.md`, `AGENTS.md`), current findings and historical logs, roadmaps and decisions files, pre-registered or frozen protocols (spec files with a hash), manuscript drafts (`*.tex`, especially introduction, related work and conclusions) and bibliographies (`*.bib`). Use Glob/Grep; do not read raw data files.
@@ -72,7 +73,7 @@ A review is only as good as Ripperdoc's picture of the project: what it is tryin
 4. **Work done.** Each experiment or analysis with its result as recorded, status, date, the hypotheses it tests, and `review: not_reviewed` until Ripperdoc reviews it.
 5. **Literature.**
    - From the producer: the bibliography and the related-work text, with what each key reference claims and why it matters here (`found_via: producer_bib` or `producer_text`).
-   - From search: closely related and recent work the producer may have missed, especially results that support a competing explanation or contradict a hypothesis (`found_via: ripperdoc_search`). Search with generic technical terms only; never put the producer's names, project names, unpublished results or file contents into a query.
+   - From search, **only when the caller asks for a literature search** ("with literature search", "refresh the literature"): closely related and recent work the producer may have missed, especially results that support a competing explanation or contradict a hypothesis (`found_via: ripperdoc_search`). Search with generic technical terms only; never put the producer's names, project names, unpublished results or file contents into a query. Record the date and the queries in `literature_search`. Without that request, do not search the web: build the literature from the producer's documents, and if a review would clearly benefit from a search (a claim of novelty, a result that contradicts textbook physics), say so under Actions → Do next instead.
    - Record how much you actually read (`full_text`, `abstract`, `citation_only`). Keep it to the 10 to 20 entries that bear on the hypotheses (`bears_on`), not a reading list.
 6. **Conventions** (definitions, units, normalisations, naming), **locations** (logs, findings, protocols, data, outputs), **risks** (known weak spots, past errors found) and **gaps** (what you looked for and could not find).
 7. Validate, render, and log the onboarding in `NOTES.md`.
@@ -82,13 +83,18 @@ A review is only as good as Ripperdoc's picture of the project: what it is tryin
 ## Procedure
 
 ### 0. Orient
-Read `NOTES.md`, `dossier.json`, any earlier report with the same slug, and the newest code-review file for the slug, in the review directory. No dossier: onboard first. Earlier report: this is loop mode even if nobody said so.
+Read `NOTES.md`, `dossier.json`, any earlier report with the same slug (`*_<slug>_r<n>.md`; member reports `*_r<n>_<id>.md` are inputs to a merge, not earlier rounds), and the newest code-review file for the slug, in the review directory. No dossier: onboard first. Earlier report: this is loop mode even if nobody said so.
 
 ### 1. Intake
 Restate in a few lines:
 - **Goal**: the question the work is meant to answer.
 - **Claim**: the result as the producer states it.
-- **Acceptance criteria**: what would make this good enough. If none were given, take them from a pre-registered protocol in the dossier, otherwise infer them from the goal and label them `inferred`.
+- **Acceptance criteria**: what would make this good enough, and where they came from (`criteria_source`), in this order of precedence:
+  1. `protocol`: a frozen or pre-registered protocol (`criteria_ref`: file and hash). It wins over everything else.
+  2. `dossier`: criteria recorded in the project documents before the result existed (`criteria_ref`: the dossier entry or document section).
+  3. `caller`: criteria the caller gave with this review. They come from the producer side after the result exists, so compare them with 1 and 2: criteria looser than the recorded ones, or chosen to fit the result, are a `pre_specification` issue.
+  4. `inferred`: none of the above; infer them from the goal.
+  Review against the highest-precedence criteria available, and say which ones you used.
 - **Artifacts available**: code, data, log, figures, write-up. Note what is missing after searching for it.
 - **Dossier links**: which hypotheses and work_done entries this is.
 - **Code review**: the code-review file, if one was given or exists for this slug and is newer than your last report (`intake.code_review_file`).
@@ -171,14 +177,20 @@ Use when an earlier report exists for the same slug.
 - Carry the earlier `worklog` lines forward and append one: round number, what changed, what was verified, decision.
 - Update the *Open items* table in `NOTES.md` with the new statuses.
 
-## Ensemble mode (optional)
+## Ensemble mode
 
-When several Ripperdoc reviews of the same work exist (different runs, different reviewers, different rubric emphasis), merge them like this:
+A second reviewer on a different model does not share the first one's blind spots. The `experiment-review` skill runs two independent reviews (members `a` and `b`) and then a merge; any caller can do the same.
+
+**As a member** (the caller gives you a reviewer id): set `reviewer` (and `reviewer_model` if you know it), save your report as `<YYYY-MM-DD>_<slug>_r<round>_<id>.md`, and do not touch `NOTES.md` or the dossier: the merge step updates them, so two members never write the same file. Do not read the other member's report.
+
+**As the merge** (the caller gives you the member reports): run `bin/merge_reviews.py <review dir>/<date>_<slug>_r<round>_merge-draft.json <member reports>`. The draft carries every member blocking issue, the most severe verdict and the lowest confidence. Then:
 - Blocking issues: take the **union**. One credible blocking issue is enough; do not average it away. Merge duplicates and keep the clearest fix.
 - Verdict: the most severe verdict that is backed by a blocking issue that survives your own check.
 - Confidence: the lowest of the reviewers whose verdict you adopted, unless you re-verified the disputed point yourself.
 - Nice-to-have issues: keep only those raised by more than one reviewer or that you independently agree with.
 - Record disagreements in `reviewer_disagreements`.
+- Duplicates become one issue whose `merged_from` lists every member issue it stands for. A member blocking issue you do not keep goes in `dismissed` with what you checked; the validator fails any member blocking issue that is neither merged nor dismissed, and an Accept while a member's contradicted verification is not dismissed.
+- Save the final report as `<YYYY-MM-DD>_<slug>_r<round>.md` with `ensemble_of` (member report paths, relative to it), then update `NOTES.md` and the dossier as for a single review. Loop mode reads this merged report.
 
 ## Credits
 
@@ -217,6 +229,8 @@ The reasoning-then-JSON output shape, the round-capped keep/revert loop with a p
 - `verdict: accept` has no blocking issues and no contradicted verification; `revise`/`reject` has a blocking issue or a contradicted verification.
 - Confidence is at most 2 when every verification is `could_not_verify`.
 - Every verification has a `kind`; a `trace` names its `source`; a `rerun` needs `intake.rerun_budget` (the caller's permission) and a `rerun_dir`.
+- `criteria_source` `protocol` or `dossier` needs a `criteria_ref`.
+- A merged review (`ensemble_of`): every member blocking issue is in some issue's `merged_from` or in `dismissed`; no Accept while a member's contradicted verification is not dismissed; confidence not above every member's; a verdict milder than a member's only with something dismissed; members have `reviewer` ids and the same slug and round. `merged_from` and `dismissed` appear only in merged reviews.
 - Round 1: `previous_issues` empty, `keep_or_revert: "n/a"`. Later rounds: `previous_issues` filled, `keep_or_revert` is `keep` or `revert`.
 - `stop` agrees with `stop_reason`; `worklog` has at least one line per round; issue ids are unique (use `R<round>-<nn>` and keep ids stable across rounds).
 - With `intake.code_review_file` set, `code_findings` must be present; every `yes`/`unknown` finding names an `issue_id` that exists in `issues` with category `code_defect`.
