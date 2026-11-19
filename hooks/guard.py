@@ -17,7 +17,7 @@ import json, os, re, shlex, sys
 BIN = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "bin"))
 SCRATCH = {os.path.realpath(os.environ.get("RIPPERDOC_SCRATCH") or os.path.join(os.environ.get("TMPDIR") or "/tmp", "ripperdoc")),
            "/tmp/ripperdoc"}
-OWN_TOOLS = {"sandbox-run", "validate.py", "render_dossier.py"}
+OWN_TOOLS = {"sandbox-run", "validate.py", "render_dossier.py", "merge_reviews.py"}
 ENV_OK = {"RIPPERDOC_TIMEOUT"}
 SEPS = {";", "&&", "||", "|", "&", "|&", "(", ")"}
 REDIR = re.compile(r"^\d*(>>?|>\||&>>?|>&)$")

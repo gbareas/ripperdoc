@@ -2,28 +2,66 @@
 # sandbox-run CMD [ARGS...]
 #   Run CMD with the whole filesystem read-only and no network.
 #   Writable: one fresh run directory, exported as $RIPPERDOC_OUT (also HOME, TMPDIR,
-#   XDG_CACHE_HOME and MPLCONFIGDIR point inside it). Earlier run directories stay readable.
-#   A producer script that tries to write into the project fails with "Read-only file system"
-#   instead of overwriting anything.
+#   XDG_CACHE_HOME, MPLCONFIGDIR and the Python bytecode cache point inside it). Earlier run
+#   directories stay readable. A producer script that tries to write into the project fails
+#   with "Read-only file system" (Linux) or "Operation not permitted" (macOS) instead of
+#   overwriting anything.
+#   Linux: bubblewrap (bwrap). macOS: sandbox-exec (built in).
 #   Env: RIPPERDOC_SCRATCH (scratch root, default ${TMPDIR:-/tmp}/ripperdoc),
 #        RIPPERDOC_TIMEOUT (seconds, default 300 = the recompute cap; raise it only for a rerun the caller allowed).
 #   Shell syntax goes inside:  sandbox-run bash -c 'cd src && python x.py --out "$RIPPERDOC_OUT"'
 #   Pixi projects:              sandbox-run pixi run --as-is python script.py
+#   Testing: RIPPERDOC_SANDBOX_DRYRUN=1 prints the command instead of running it;
+#            RIPPERDOC_SANDBOX_OS=Linux|Darwin overrides the detected platform.
 set -euo pipefail
-if [[ $# -eq 0 || $1 == -h || $1 == --help ]]; then sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0; fi
-command -v bwrap >/dev/null || { echo "sandbox-run: bwrap not installed; do not rerun unsandboxed" >&2; exit 97; }
+if [[ $# -eq 0 || $1 == -h || $1 == --help ]]; then sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0; fi
+OS="${RIPPERDOC_SANDBOX_OS:-$(uname -s)}"
+DRY="${RIPPERDOC_SANDBOX_DRYRUN:-}"
 ROOT="${RIPPERDOC_SCRATCH:-${TMPDIR:-/tmp}/ripperdoc}"
 TIMEOUT="${RIPPERDOC_TIMEOUT:-300}"
+[[ "$TIMEOUT" =~ ^[0-9]+$ ]] || { echo "sandbox-run: RIPPERDOC_TIMEOUT must be whole seconds" >&2; exit 2; }
 mkdir -p "$ROOT"
-ROOT="$(realpath "$ROOT")"
+ROOT="$(cd "$ROOT" && pwd -P)"
 RUN="$(mktemp -d "$ROOT/run-$(date +%Y%m%d-%H%M%S)-XXXX")"
-mkdir -p "$RUN/home" "$RUN/cache" "$RUN/mpl"
-extra=()
-case "$PWD" in /tmp/*) [[ "$PWD" == "$ROOT"* ]] || extra+=(--ro-bind "$PWD" "$PWD");; esac
-echo "[sandbox-run] writable: $RUN | rest read-only | no network | timeout ${TIMEOUT}s" >&2
-exec bwrap --ro-bind / / --dev-bind /dev /dev --proc /proc \
-  --tmpfs /tmp --ro-bind "$ROOT" "$ROOT" --bind "$RUN" "$RUN" "${extra[@]}" \
-  --unshare-net --die-with-parent \
-  --setenv RIPPERDOC_OUT "$RUN" --setenv HOME "$RUN/home" --setenv TMPDIR "$RUN" \
-  --setenv XDG_CACHE_HOME "$RUN/cache" --setenv MPLCONFIGDIR "$RUN/mpl" \
-  --chdir "$PWD" timeout "$TIMEOUT" "$@"
+mkdir -p "$RUN/home" "$RUN/cache" "$RUN/mpl" "$RUN/pycache"
+
+run() {
+  if [[ -n "$DRY" ]]; then printf '%q ' "$@"; echo; exit 0; fi
+  exec "$@"
+}
+
+case "$OS" in
+Linux)
+  [[ -n "$DRY" ]] || command -v bwrap >/dev/null || { echo "sandbox-run: bwrap not installed; do not run unsandboxed" >&2; exit 97; }
+  extra=()
+  case "$PWD" in /tmp/*) [[ "$PWD" == "$ROOT"* ]] || extra+=(--ro-bind "$PWD" "$PWD");; esac
+  # GPUs: only the device nodes, not a writable /dev
+  for d in /dev/nvidia* /dev/dri; do [[ -e "$d" ]] && extra+=(--dev-bind "$d" "$d"); done
+  echo "[sandbox-run] writable: $RUN | rest read-only | no network | timeout ${TIMEOUT}s" >&2
+  run bwrap --ro-bind / / --dev /dev --proc /proc \
+    --tmpfs /tmp --ro-bind "$ROOT" "$ROOT" --bind "$RUN" "$RUN" "${extra[@]}" \
+    --unshare-net --unshare-ipc --unshare-pid --new-session --die-with-parent \
+    --setenv RIPPERDOC_OUT "$RUN" --setenv HOME "$RUN/home" --setenv TMPDIR "$RUN" \
+    --setenv XDG_CACHE_HOME "$RUN/cache" --setenv MPLCONFIGDIR "$RUN/mpl" \
+    --setenv PYTHONPYCACHEPREFIX "$RUN/pycache" \
+    --chdir "$PWD" timeout "$TIMEOUT" "$@"
+  ;;
+Darwin)
+  [[ -n "$DRY" ]] || command -v sandbox-exec >/dev/null || { echo "sandbox-run: sandbox-exec not found; do not run unsandboxed" >&2; exit 97; }
+  # Writes only in $RUN and to the standard streams/devices; no network. Reads are allowed.
+  PROFILE="(version 1)
+(allow default)
+(deny network*)
+(allow network* (local unix))
+(deny file-write*)
+(allow file-write* (subpath \"$RUN\") (literal \"/dev/null\") (literal \"/dev/zero\") (literal \"/dev/tty\") (literal \"/dev/dtracehelper\") (regex #\"^/dev/fd/\") (regex #\"^/dev/ttys\"))"
+  echo "[sandbox-run] writable: $RUN | rest read-only | no network | timeout ${TIMEOUT}s" >&2
+  # macOS has no `timeout`; perl's alarm survives exec and kills the command at the limit.
+  run sandbox-exec -p "$PROFILE" /usr/bin/env \
+    RIPPERDOC_OUT="$RUN" HOME="$RUN/home" TMPDIR="$RUN/" XDG_CACHE_HOME="$RUN/cache" \
+    MPLCONFIGDIR="$RUN/mpl" PYTHONPYCACHEPREFIX="$RUN/pycache" \
+    perl -e 'alarm shift; exec @ARGV or die "exec: $!"' "$TIMEOUT" "$@"
+  ;;
+*)
+  echo "sandbox-run: unsupported platform $OS; do not run unsandboxed" >&2; exit 97;;
+esac

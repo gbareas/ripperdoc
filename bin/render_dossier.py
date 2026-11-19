@@ -43,6 +43,9 @@ def main():
         ("key", lambda l: l["key"]), ("claim", lambda l: l["claim"]), ("relevance", lambda l: l["relevance"]),
         ("bears on", lambda l: ", ".join(l.get("bears_on", []))), ("found via", lambda l: l["found_via"]),
         ("read", lambda l: l["read_by_ripperdoc"]), ("ref", lambda l: l.get("url") or l["citation"])])]
+    ls = d.get("literature_search")
+    md += [f"_Web search: {ls['date']}, queries: " + "; ".join(f"`{q}`" for q in ls["queries"]) + "_" if ls
+           else "_No web literature search run (only on request)._", ""]
     md += ["## Conventions", "", table(d["conventions"], [("name", lambda c: c["name"]), ("rule", lambda c: c["rule"]), ("source", lambda c: c["source"])])]
     md += ["## Where things are", "", table(d["locations"], [("what", lambda c: c["what"]), ("path", lambda c: f"`{c['path']}`")])]
     md += ["## Known risks", ""] + ([f"- {r}" for r in d["risks"]] or ["_none_"])
