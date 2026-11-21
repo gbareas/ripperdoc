@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/banner.jpg" alt="Ripperdoc: a research supervisor for Claude Code, every claim traced to its code"></p>
+
 # Ripperdoc
 
 A research supervisor for Claude Code. Ripperdoc questions results and experiment designs before anyone trusts them: it verifies 1 to 3 key claims itself, mainly by tracing each number to the code line and equation that produce it and judging whether they are right (quick recomputes from saved outputs are allowed; pipeline reruns only when you allow them), returns a verdict (accept / revise / reject), prioritized issues, a do / revise / discard action list, and a schema-validated JSON review. It never edits the work it reviews.
@@ -23,7 +25,7 @@ A research supervisor for Claude Code. Ripperdoc questions results and experimen
 Requirements: Claude Code, `python3`, and for running code: `bwrap` (bubblewrap) on Linux, or the built-in `sandbox-exec` on macOS. Without either, Ripperdoc still traces but cannot recompute.
 
 ```bash
-git clone <this repo> && cd ripperdoc && ./install.sh
+git clone https://github.com/gbareas/ripperdoc && cd ripperdoc && ./install.sh
 ```
 
 `install.sh` writes `~/.claude/agents/ripperdoc.md` and `~/.claude/skills/experiment-review/SKILL.md` with this checkout's path filled in. Edit files here, then rerun it. Restart Claude Code afterwards.
