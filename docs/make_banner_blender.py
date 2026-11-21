@@ -19,7 +19,7 @@ from mathutils import Vector
 
 HERE = Path(__file__).resolve().parent
 OUT_RAW, OUT = HERE / "banner_raw.png", HERE / "banner.jpg"
-W, H, SAMPLES = 1600, 480, int(__import__("os").environ.get("SAMPLES", 96))
+W, H, SAMPLES = 1600, 560, int(__import__("os").environ.get("SAMPLES", 96))
 MAGENTA, CYAN, RED, WHITE = (1.0, 0.06, 0.45), (0.05, 0.85, 1.0), (1.0, 0.04, 0.03), (0.85, 0.95, 1.0)
 MONO = "/usr/share/fonts/truetype/jetbrains-mono/JetBrainsMono-Medium.ttf"
 JP = "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"
@@ -119,8 +119,8 @@ LETTERS = {
     "C": [[(3.8, 4), (1, 4), (0, 3), (0, 1), (1, 0), (3.8, 0)]],
 }
 TY = -3.0                       # title plane, in front of the clinic
-word, s = "RIPPERDOC", 0.28
-x0, z0 = -8.6, 1.0
+word, s = "RIPPERDOC", 0.4
+x0, z0 = 0.9 - 8.1, 0.6
 for ch in word:
     w = 0.0 if ch == "I" else 3.8
     for line in LETTERS[ch]:
@@ -130,13 +130,19 @@ for ch in word:
         tube([(x + 0.07, y + 0.25, z - 0.07) for x, y, z in pts], 0.03, NEON_M_DIM)  # shadow copy
     x0 += (w + 1.25) * s
 title_right = x0 - 1.25 * s
-tube([(-8.6, TY, 0.7), (title_right, TY, 0.7)], 0.012, NEON_C)
-text("// RESEARCH SUPERVISOR FOR CLAUDE CODE", MONO, 0.32, (-8.6, TY, 0.4), NEON_C, spacing=1.1)
-text("EVERY CLAIM TRACED TO ITS CODE", MONO, 0.32, (-8.6, TY, 0.0), NEON_M_DIM, spacing=1.1)
-text("> verdict: REVISE_", MONO, 0.2, (-8.6, TY, -0.45), NEON_R, spacing=1.05)
+title_left = 0.9 - 8.1
+tube([(title_left, TY, 0.3), (title_right, TY, 0.3)], 0.014, NEON_C)
+text("// RESEARCH SUPERVISOR FOR CLAUDE CODE", MONO, 0.3, (title_left, TY, -0.05), NEON_C, spacing=1.1)
+text("EVERY CLAIM TRACED TO ITS CODE //", MONO, 0.3, (title_right, TY, -0.05), NEON_M_DIM, align="RIGHT", spacing=1.1)
+text("> verdict: REVISE_", MONO, 0.2, (title_left, TY, -0.5), NEON_R, spacing=1.05)
 
-# ---------------------------------------------------------------- the clinic
-TX, TYb = 7.0, 1.2              # operating table centre (x, y)
+# ---------------------------------------------------------------- the clinic, dim and far behind the title
+NEON_M, NEON_M_DIM = emission(MAGENTA, 2.5), emission(MAGENTA, 0.8)
+NEON_C, NEON_C_DIM = emission(CYAN, 2.5), emission(CYAN, 0.7)
+NEON_R, NEON_W = emission(RED, 5.0), emission(WHITE, 1.5)
+CLINIC_DZ = 2.8
+TX, TYb = 5.6, 7.5              # operating table centre (x, y)
+before_clinic = set(bpy.data.objects)
 box((TX, TYb, -0.55), (7.6, 2.2, 0.22), STEEL)
 box((TX, TYb, -1.6), (0.9, 0.9, 2.0), STEEL)
 tube([(TX - 3.8, TYb - 1.11, -0.44), (TX + 3.8, TYb - 1.11, -0.44)], 0.025, NEON_C)   # edge light
@@ -245,20 +251,25 @@ for i, ch in enumerate("リッパードク"):
          align="CENTER")
 tube([(SIGN_X - 0.33, TYb + 0.43, -0.6), (SIGN_X - 0.33, TYb + 0.43, 3.0)], 0.01, NEON_C)
 
+# lift the whole clinic so it sits above and behind the title
+for o in set(bpy.data.objects) - before_clinic:
+    o.location.z += CLINIC_DZ
+
 # wet floor and back wall
 bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 8, -2.6))
 floor = bpy.context.object
 floor.data.materials.append(metal((0.01, 0.01, 0.015), 0.08))
+GRID = emission(MAGENTA, 0.5)
 for gx in np.arange(-24, 25, 1.6):
-    tube([(gx, -6, -2.59), (gx * 1.0, 30, -2.59)], 0.006, NEON_M_DIM)
+    tube([(gx, -6, -2.59), (gx * 1.0, 30, -2.59)], 0.006, GRID)
 for gy in np.arange(-4, 30, 1.6):
-    tube([(-30, gy, -2.59), (30, gy, -2.59)], 0.006, NEON_M_DIM)
-bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 6, 10), rotation=(math.radians(90), 0, 0))
+    tube([(-30, gy, -2.59), (30, gy, -2.59)], 0.006, GRID)
+bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 14, 10), rotation=(math.radians(90), 0, 0))
 bpy.context.object.data.materials.append(metal((0.012, 0.01, 0.02), 0.6))
 for i in range(14):                                         # distant window lights on the wall
-    x, z = rng.uniform(-16, 16), rng.uniform(-1.5, 5.5)
+    x, z = rng.uniform(-20, 20), rng.uniform(-1.5, 8)
     col = [MAGENTA, CYAN, WHITE][rng.integers(3)]
-    box((x, 5.95, z), (rng.uniform(0.2, 1.4), 0.02, rng.uniform(0.04, 0.12)), emission(col, rng.uniform(0.15, 0.5)))
+    box((x, 13.95, z), (rng.uniform(0.2, 1.4), 0.02, rng.uniform(0.04, 0.12)), emission(col, rng.uniform(0.15, 0.5)))
 
 # lights so the steel shows: magenta and cyan rims, a cold spot from the lamp
 def light(kind, loc, rot, colour, energy, size=2.0):
@@ -271,13 +282,13 @@ def light(kind, loc, rot, colour, energy, size=2.0):
         lt.spot_size, lt.spot_blend = math.radians(40), 0.4
 
 
-light("AREA", (TX - 6, TYb - 2, 4), (60, 0, -70), MAGENTA, 1500, 4)
-light("AREA", (TX + 6, TYb - 2, 3), (60, 0, 70), CYAN, 1200, 4)
-light("SPOT", (TX - 0.6, TYb + 0.3, 3.4), (0, 0, 0), WHITE, 600)
+light("AREA", (TX - 6, TYb - 2, 4 + CLINIC_DZ), (60, 0, -70), MAGENTA, 900, 4)
+light("AREA", (TX + 6, TYb - 2, 3 + CLINIC_DZ), (60, 0, 70), CYAN, 700, 4)
+light("SPOT", (TX - 0.6, TYb + 0.3, 3.4 + CLINIC_DZ), (0, 0, 0), WHITE, 250)
 light("AREA", (TX, TYb - 6, 0.5), (90, 0, 0), (0.6, 0.7, 1.0), 300, 8)
 
 # ---------------------------------------------------------------- camera, render
-bpy.ops.object.camera_add(location=(0.9, -22.0, 1.9))
+bpy.ops.object.camera_add(location=(0.9, -22.0, 2.3))
 cam = bpy.context.object
 cam.rotation_euler = (math.radians(88.5), 0, 0)
 cam.data.lens = 35
