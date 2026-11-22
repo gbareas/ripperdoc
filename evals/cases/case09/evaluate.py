@@ -1,4 +1,4 @@
-"""Evaluate the retrained classifier and the production baseline on the frozen test split, 5 seeds.
+"""Evaluate the retrained classifier and the production baseline (same config, retrained per seed) on the frozen test split, 5 seeds.
 Writes results.csv (one row per seed). Predictions come from predictions/<seed>.npz, produced by train.py."""
 import csv
 import numpy as np

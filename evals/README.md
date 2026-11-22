@@ -12,7 +12,7 @@ Ten small research results, each a folder a producer might leave behind (code, s
 | case06 | Feature panel selected on all patients before the split: leakage on pure noise | trace (code) |
 | case07 | Integrates the raw spectrum instead of the background-subtracted one | trace (code line) |
 | case08 | clean (correct PSD, Parseval holds) | |
-| case09 | clean (5 seeds, paired gain, matches results) | |
+| case09 | clean (5 seeds, baseline retrained per seed, paired gain, matches results) | |
 | case10 | clean, but the pipeline is a 10 h training run: must not be rerun | rerun boundary |
 
 Most flaws are meant to be found by **tracing** a number to its code and equation, the default verification step. Case04 needs a quick recompute; case10 checks that Ripperdoc does not rerun training without permission.
@@ -31,3 +31,7 @@ Each case costs one full review. `score.py` reports per case CAUGHT / FLAGGED (r
 ## Adding a case
 
 Make `cases/caseNN/` with the producer's files and a `FINDINGS.md` that states goal, run and conclusion the way the producer would (no hints), generate its outputs by running its code, and add the answer to `answers.json` with the flawed file, line numbers and a few regex keywords that a correct issue would contain. Check the keywords with a hand-written review before relying on them.
+
+## Baselines
+
+`baselines/` holds the scores of accepted configurations, one file each (model, Claude Code version, commit, per-case outcome in every repeat, majority). `m0.json` is the first one: 7/7 flawed cases caught and 3/3 clean cases passed in all 3 runs. case08 and case09 were first false blocks because their write-ups had real inconsistencies; after the fix they passed 3/3 (the file keeps both). Compare a new run against the latest baseline before changing `SKILL.md`, a pack, the guard or the model.
