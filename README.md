@@ -13,8 +13,10 @@ A research supervisor for Claude Code. Ripperdoc questions results and experimen
 | `skills/experiment-review/SKILL.md` | Companion skill: `/code-review` on the experiment's code, then Ripperdoc with those findings. |
 | `bin/sandbox-run` | Runs code with the whole filesystem read-only (bubblewrap on Linux, sandbox-exec on macOS), no network, one writable run dir, 5 min default timeout. |
 | `bin/merge_reviews.py` | Drafts the merged review from two ensemble members, carrying every blocking issue. |
+| `bin/ripperdoc-gate` | The verification gate: decides pass / block / escalate for a claim from its reviews, and runs the reviewers when needed (see `docs/gate.md`). |
 | `bin/validate.py` | Validates reviews and dossiers against `schema/` plus consistency rules (stdlib only). |
 | `bin/render_dossier.py` | Renders `dossier.json` to `DOSSIER.md`. |
+| `hooks/stop_gate.py`, `hooks/producer_guard.py` | For the producer's session: the Stop hook keeps it working until its claims pass; the guard stops it from writing reviews, the policy or Ripperdoc itself. |
 | `hooks/guard.py` | PreToolUse hook for the subagent: writes only in `ripperdoc_reviews/` or scratch, code runs only sandboxed, read-only git. |
 | `packs/` | Domain packs (`research-core`, `physics`, `ml`): per domain, what tracing to the equation means, quick recompute recipes and a checklist. Ripperdoc picks them per review; check them with `bin/validate.py packs`. |
 | `schema/` | `review.schema.json`, `dossier.schema.json`, `pack.schema.json`. |
@@ -48,6 +50,10 @@ To make the post-experiment review automatic in a project, add to its `CLAUDE.md
 > When an experiment, analysis, evaluation or simulation run finishes, run the `experiment-review` skill (code review, then the `ripperdoc` agent) before its numbers go into a findings document, figure or paper. Report the verdict and actions, then wait for the user before fixing or rerunning anything.
 
 Everything Ripperdoc writes goes to `ripperdoc_reviews/` at the project root: `dossier.json` + `DOSSIER.md`, one report per review (`<date>_<slug>_r<round>.md`), code-review files, and `NOTES.md`. Decide per project whether to commit that folder.
+
+## Gate (work is not done until Ripperdoc passes it)
+
+In a project, `ripperdoc-gate init` writes `.ripperdoc/policy.json` (default: accept with confidence ≥ 3, two reviewers, 3 rounds, no reruns) and prints the hook settings to add to `.claude/settings.json`. From then on, the agent writes a claim manifest in `.ripperdoc/claims/` when it believes a result is done, and the Stop hook does not let the session finish until the claim passes, or a human has to decide. Details: `docs/gate.md`.
 
 ## Credits
 

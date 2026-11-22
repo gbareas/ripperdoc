@@ -241,6 +241,18 @@ def dossier_rules(d, errs):
         errs.append("literature found by ripperdoc_search but no literature_search record (searches run only when the caller asks)")
 
 
+def validate_file(kind, path):
+    """Errors for a review or dossier file (empty list = valid). Used by ripperdoc-gate."""
+    try:
+        data = load_review(path)
+    except (OSError, ValueError) as e:
+        return [str(e)]
+    errs = []
+    check(data, json.load(open(os.path.join(SCHEMA_DIR, f"{kind}.schema.json"))), "$", errs)
+    review_rules(data, errs, path) if kind == "review" else dossier_rules(data, errs)
+    return errs
+
+
 def main():
     if len(sys.argv) in (2, 3) and sys.argv[1] == "packs":
         d = sys.argv[2] if len(sys.argv) == 3 else PACKS_DIR

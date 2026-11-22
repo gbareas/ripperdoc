@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ripperdoc claim manifest (.ripperdoc/claims/<slug>.json), written by the producer when it believes the work is done",
+  "type": "object",
+  "required": ["slug", "goal", "claim", "artifacts"],
+  "additionalProperties": false,
+  "properties": {
+    "slug": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "Short kebab-case name, the same across rounds; must equal the file name"},
+    "goal": {"type": "string", "minLength": 1},
+    "claim": {"type": "string", "minLength": 1, "description": "The result as the producer states it, with its key numbers"},
+    "artifacts": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1},
+                  "description": "Files or folders (relative to the project root) that back the claim: code, outputs, logs, write-up. Their fingerprints tie a review to this exact version."},
+    "criteria": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {"enum": ["protocol", "dossier", "caller", "inferred"]},
+        "ref": {"type": "string", "minLength": 1},
+        "text": {"type": "string", "minLength": 1}
+      }
+    },
+    "packs": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"}},
+    "notes": {"type": "string", "description": "Anything else the reviewer should know. Treated as the producer's claim, not as evidence."}
+  }
+}

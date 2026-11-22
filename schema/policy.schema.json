@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ripperdoc gate policy (.ripperdoc/policy.json). Written by a human; the producer guard blocks agents from editing it.",
+  "type": "object",
+  "required": ["pass_verdicts", "min_confidence", "ensemble", "max_rounds"],
+  "additionalProperties": false,
+  "properties": {
+    "pass_verdicts": {"type": "array", "minItems": 1, "items": {"enum": ["accept", "revise", "reject"]}},
+    "min_confidence": {"type": "integer", "minimum": 1, "maximum": 5},
+    "ensemble": {"type": "boolean", "description": "true: two reviewers on different models plus a merge; a single review does not pass"},
+    "models": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"a": {"type": "string"}, "b": {"type": "string"}, "merge": {"type": "string"}},
+      "description": "Model per ensemble role (claude --model). Empty or missing: the session default. b defaults to sonnet."
+    },
+    "max_rounds": {"type": "integer", "minimum": 1, "maximum": 10},
+    "reruns": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "allowed": {"type": "array", "items": {
+          "type": "object", "required": ["cmd", "max_minutes"], "additionalProperties": false,
+          "properties": {"cmd": {"type": "string", "minLength": 1}, "max_minutes": {"type": "integer", "minimum": 1}}
+        }}
+      },
+      "description": "The only place rerun permission comes from in gated reviews. Empty: trace and recompute only."
+    },
+    "review_dir": {"type": "string", "minLength": 1, "description": "Where reviews live, relative to the project root. Default ripperdoc_reviews"},
+    "review_timeout_minutes": {"type": "integer", "minimum": 1, "description": "Per reviewer session. Default 30"},
+    "stop_hook": {"enum": ["review", "check"], "description": "review (default): the Stop hook runs the reviewer when no fresh review exists; check: it only decides from existing reviews"},
+    "literature_search": {"type": "boolean", "description": "Allow web literature search in gated reviews. Default false"}
+  }
+}
