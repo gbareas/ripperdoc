@@ -34,7 +34,15 @@ Invoke the `code-review` skill on the experiment's code:
 
 Write the findings, exactly as reported (file, line, summary, failure scenario, verdict if any), to `<review dir>/<YYYY-MM-DD>_<slug>_code-review.md`, numbered `CR-01`, `CR-02`, ... Write the file even when there are no findings, and say what was reviewed (commit range or paths, level).
 
-### 3. Ripperdoc: two independent reviews, then a merge
+### 3. Ripperdoc through the gate (projects with `.ripperdoc/policy.json`)
+If the project has a gate policy, the gate runs the reviewers, so skip 3a to 3c:
+1. Write the claim manifest `.ripperdoc/claims/<slug>.json` (format: `__RIPPERDOC_HOME__/schema/claim.schema.json`): `slug`, `goal`, `claim` with the key numbers, `artifacts` (the code, outputs, log or findings entry from step 1; list folders rather than every file), and `criteria` with their origin (`protocol` + frozen spec and hash, `dossier`, `caller`, or `inferred`).
+2. Run `__RIPPERDOC_HOME__/bin/ripperdoc-gate review .ripperdoc/claims/<slug>.json` as a plain command, with a long timeout (a review takes minutes; an ensemble three sessions). It reuses a review that is still valid for exactly these files, otherwise runs Ripperdoc with the policy's ensemble, models and rerun permissions. Never add rerun permission yourself: only the policy grants it.
+3. Report the gate's decision (`pass`, `block` with its actions, `escalate` with what the user must decide, or `error`) and the report path, then continue with step 4 using that report.
+
+Without a policy, continue with 3a.
+
+### 3 (no gate). Ripperdoc: two independent reviews, then a merge
 One reviewer on the same model as the producer shares its blind spots, so by default two Ripperdoc agents review independently on different models, and a third merges them. Use a single reviewer (only step 3b, without a reviewer id, writing the final report itself) when the user asks for it or the result is exploratory and headed nowhere yet.
 
 **3a. Dossier first.** If `<review dir>/dossier.json` does not exist, spawn `ripperdoc` once to onboard only, and wait for it. Two members must not build it at the same time.
