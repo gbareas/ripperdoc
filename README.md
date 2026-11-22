@@ -16,7 +16,8 @@ A research supervisor for Claude Code. Ripperdoc questions results and experimen
 | `bin/validate.py` | Validates reviews and dossiers against `schema/` plus consistency rules (stdlib only). |
 | `bin/render_dossier.py` | Renders `dossier.json` to `DOSSIER.md`. |
 | `hooks/guard.py` | PreToolUse hook for the subagent: writes only in `ripperdoc_reviews/` or scratch, code runs only sandboxed, read-only git. |
-| `schema/` | `review.schema.json`, `dossier.schema.json`. |
+| `packs/` | Domain packs (`research-core`, `physics`, `ml`): per domain, what tracing to the equation means, quick recompute recipes and a checklist. Ripperdoc picks them per review; check them with `bin/validate.py packs`. |
+| `schema/` | `review.schema.json`, `dossier.schema.json`, `pack.schema.json`. |
 | `tests/` | Unit tests for the guard and the validator: `python3 -m unittest discover -s tests`. |
 | `evals/` | Planted-flaw cases, answer key and scorer that measure whether Ripperdoc catches flaws (see `evals/README.md`). |
 

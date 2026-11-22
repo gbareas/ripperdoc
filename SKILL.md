@@ -15,9 +15,10 @@ Scope: computational experiments, data analyses, model evaluations, simulations,
 |---|---|
 | `bin/sandbox-run CMD...` | Run anything that executes code. Whole filesystem read-only, no network, one fresh writable run dir in `$RIPPERDOC_OUT`, default timeout 300 s (the recompute cap). |
 | `bin/validate.py review <report.md>` / `dossier <dossier.json>` | Check output against `schema/*.schema.json` plus consistency rules. Must pass before you finish. |
+| `packs/<id>/pack.json`, `packs/<id>/checklist.md` | Domain packs: what tracing means in a domain, and its checklist items. See Domain packs. |
 | `bin/render_dossier.py <dossier.json>` | Writes `DOSSIER.md` (human view) next to the JSON. |
 | `bin/merge_reviews.py <out.json> <a.md> <b.md>...` | Ensemble mode: drafts a merged review that carries every member's blocking issues. |
-| `schema/review.schema.json`, `schema/dossier.schema.json` | The machine-readable formats. Field names are stable; do not add fields. |
+| `schema/review.schema.json`, `schema/dossier.schema.json`, `schema/pack.schema.json` | The machine-readable formats. Field names are stable; do not add fields. |
 | `hooks/guard.py` | Enforces read-only in the ripperdoc subagent (blocks writes outside your own folders and unsandboxed code execution). |
 
 ## Ground rules
@@ -80,6 +81,20 @@ A review is only as good as Ripperdoc's picture of the project: what it is tryin
 
 **Using it in reviews.** Intake links the work to its hypotheses and work_done entries (`intake.dossier_links`). Interrogation checks the claim against the hypothesis status, the pre-registered protocol and the literature (rubric item *Consistent with the record*). After the review, set that work_done entry's `review` and `review_file`, and update `ripperdoc_assessment` of any hypothesis the verdict bears on.
 
+## Domain packs
+
+The procedure, the verification ladder and the verdict rules are the same in every domain. What changes is what "the equation" is and which mistakes are typical. That lives in packs: `packs/<id>/pack.json` (when the pack applies, its `trace_targets`, quick `recompute_recipes`) and `packs/<id>/checklist.md` (items with ids `<id>.<item>`).
+
+**Choosing packs** (step 1, Intake):
+1. If the caller names packs, use those.
+2. Otherwise read every `pack.json` and choose by `applies_when`: its `always_for` sentence first, then whether the work's files and write-up match its `globs` and `keywords`. A match on a keyword alone is weak evidence; choose the pack when the claim actually rests on that domain.
+3. Always add what a chosen pack `extends` (e.g. `physics` and `ml` extend `research-core`). `research-core` applies to any experiment, analysis, evaluation or simulation, or the design of one.
+4. Read each chosen pack's `checklist.md` in full. Record the packs with the `version` from their `pack.json` in the review's `packs` field, and say in Reasoning why you chose them.
+
+**Using them.** A pack's `trace_targets` tells you where to aim the trace for that domain; its `recompute_recipes` are quick checks that stay within the recompute cap. Its checklist items join the rubric in step 2. When an item raised an issue or guided a verification, set that issue's or verification's `checklist_item` to the item id. A pack never changes the verification ladder: a pack that suggests a check that would need a rerun still needs the caller's permission.
+
+If no pack fits (the work is outside every pack's domain), use the core rubric alone, leave `packs` empty and say so.
+
 ## Procedure
 
 ### 0. Orient
@@ -99,11 +114,12 @@ Restate in a few lines:
 - **Dossier links**: which hypotheses and work_done entries this is.
 - **Code review**: the code-review file, if one was given or exists for this slug and is newer than your last report (`intake.code_review_file`).
 - **Round**: 1 unless an earlier report exists (see Loop mode).
+- **Packs**: the domain packs you chose and why (see Domain packs).
 
 If the goal itself is unclear, say so and review against the most likely reading.
 
 ### 2. Interrogation
-Work through the rubric below (Appendix A). Pick the sections that apply: always the Core section, plus Experiment design when there is a design or a run, plus Statistics when there are numbers being compared. Skip items that do not apply instead of padding.
+Work through the rubric below (Appendix A) and the checklists of the packs you chose. Always the Core section, plus Statistics when numbers are being compared, plus every pack item that applies to this work. Skip items that do not apply instead of padding.
 
 ### 2b. Code-review findings (when a code-review file exists)
 The code reviewer found possible bugs; your job is to decide which ones matter for *this* result. For each finding (`CR-01`, ...):
@@ -210,13 +226,8 @@ The reasoning-then-JSON output shape, the round-capped keep/revert loop with a p
 - **Falsifiability.** What observation would show the claim is wrong? Was that check done?
 - **Claim strength.** Is the language (causes, outperforms, generalizes) stronger than the evidence (correlates, beats on one split, works on one dataset)?
 
-### Experiment design (when there is a design or a run)
-- **Controls.** Is there a no-intervention, shuffled-label, random, or ablated condition that isolates the effect?
-- **Baselines.** Are baselines strong, current and tuned with comparable effort? Is a trivial baseline (majority class, mean predictor, previous version) included?
-- **Confounds.** Could something else explain the difference: data leakage, train/test overlap, different preprocessing, compute budget, random seed, ordering, selection of reported runs?
-- **Statistical power.** Enough runs, seeds or samples to detect the claimed effect? Is variance reported?
-- **Reproducibility.** Seeds, versions, configs, data splits and commands recorded? Could someone rerun it from the log alone?
-- **Pre-specification.** Were metrics and comparisons chosen before seeing results? If a frozen protocol exists, does its hash match the spec actually used, and is a failed criterion reported as "criterion not met" rather than reinterpreted?
+### Domain items
+Experiment design items (controls, baselines, confounds, power, reproducibility, pre-specification) are in `packs/research-core/checklist.md`; domain-specific items are in the other packs. See Domain packs.
 
 ### Statistics (when numbers are compared)
 - Uncertainty shown (CI, std over seeds, bootstrap)? Is the difference larger than the noise?
@@ -234,4 +245,5 @@ The reasoning-then-JSON output shape, the round-capped keep/revert loop with a p
 - Round 1: `previous_issues` empty, `keep_or_revert: "n/a"`. Later rounds: `previous_issues` filled, `keep_or_revert` is `keep` or `revert`.
 - `stop` agrees with `stop_reason`; `worklog` has at least one line per round; issue ids are unique (use `R<round>-<nn>` and keep ids stable across rounds).
 - With `intake.code_review_file` set, `code_findings` must be present; every `yes`/`unknown` finding names an `issue_id` that exists in `issues` with category `code_defect`.
+- `packs`: each listed pack exists in `packs/`, and every pack it `extends` is listed too. A `checklist_item` on an issue or verification belongs to a listed pack and, when the listed `version` has the installed major version, names an item that exists in its checklist. (Bump a pack's major version when you rename or remove items; minor and patch bumps keep old reviews fully checked.)
 - Dossier: unique ids, `tests_hypotheses` refer to existing hypotheses, a reviewed work_done entry names its `review_file`, a pre-registered hypothesis has a `frozen_ref`.

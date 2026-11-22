@@ -1,0 +1,19 @@
+{
+  "id": "ml",
+  "version": "1.0.0",
+  "title": "Machine learning",
+  "description": "Model training and evaluation: splits, metrics, seeds, baselines.",
+  "extends": ["research-core"],
+  "applies_when": {
+    "always_for": "claims about a trained model's performance or about a comparison between models",
+    "globs": ["**/train*.py", "**/eval*.py", "**/*predictions*", "**/*.ckpt", "**/*.pt", "**/*.safetensors"],
+    "keywords": ["accuracy", "AUC", "F1", "loss", "seed", "train", "test split", "validation", "baseline", "classifier", "fine-tune", "checkpoint", "features"]
+  },
+  "trace_targets": "The metric definition and the data it is computed on: which split, which runs, which threshold, which baseline config; the point in the pipeline where each fitted step (features, scaler, selection, tuning) sees data.",
+  "recompute_recipes": [
+    "Recompute the metric from saved predictions and labels.",
+    "Mean and spread over the saved per-seed results; paired differences per seed.",
+    "Check the order of operations in code: is anything fitted before the split?"
+  ],
+  "eval_cases": ["case04", "case05", "case06", "case09", "case10"]
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ripperdoc domain pack manifest (packs/<id>/pack.json)",
+  "type": "object",
+  "required": ["id", "version", "title", "description", "extends", "applies_when", "trace_targets", "recompute_recipes", "eval_cases"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "Must equal the folder name; prefixes every checklist item id"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string", "minLength": 1},
+    "extends": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"}, "description": "Packs that are always loaded together with this one"},
+    "applies_when": {
+      "type": "object",
+      "required": ["always_for", "globs", "keywords"],
+      "additionalProperties": false,
+      "properties": {
+        "always_for": {"type": "string", "minLength": 1},
+        "globs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "keywords": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "trace_targets": {"type": "string", "minLength": 1, "description": "What 'trace to the equation' means in this domain"},
+    "recompute_recipes": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "eval_cases": {"type": "array", "items": {"type": "string", "pattern": "^case[0-9]+$"}}
+  }
+}

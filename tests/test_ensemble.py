@@ -55,6 +55,17 @@ class Ensemble(unittest.TestCase):
         p = self.validate(out)
         self.assertEqual(p.returncode, 0, p.stdout)
 
+    def test_draft_carries_packs_and_checklist_items(self):
+        a = member("a", "revise", [dict(BLOCKING, checklist_item="physics.units")])
+        a["packs"] = [{"id": "research-core", "version": "1.0.0"}, {"id": "physics", "version": "1.0.0"}]
+        b = member("b", "accept")
+        b["packs"] = [{"id": "research-core", "version": "1.0.0"}]
+        out, d = self.merge(a, b)
+        self.assertEqual(sorted(p["id"] for p in d["packs"]), ["physics", "research-core"])
+        self.assertEqual(d["issues"][0]["checklist_item"], "physics.units")
+        p = self.validate(out)
+        self.assertEqual(p.returncode, 0, p.stdout)
+
     def test_dropping_a_blocking_issue_silently_fails(self):
         out, d = self.merge(member("a", "accept"), member("b", "revise", [BLOCKING]))
         d.update(issues=[], verdict="accept", stop=True, stop_reason="no_blocking_issues")
