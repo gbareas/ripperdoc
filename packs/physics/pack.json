@@ -1,0 +1,19 @@
+{
+  "id": "physics",
+  "version": "1.0.0",
+  "title": "Physics",
+  "description": "Numerical physics: spectra, transforms, simulations, fits to physical models.",
+  "extends": ["research-core"],
+  "applies_when": {
+    "always_for": "claims that rest on a physical formula, a transform of a signal, or a simulation of a physical system",
+    "globs": ["**/*.py", "**/*.ipynb", "**/*.jl", "**/*.f90", "**/*.c", "**/*.cpp"],
+    "keywords": ["spectrum", "spectral", "PSD", "FFT", "periodogram", "Planck", "Hamiltonian", "oscillator", "damping", "flux", "energy", "frequency", "wavelength", "simulation", "integrator"]
+  },
+  "trace_targets": "The formula in code against the derivation, the cited paper or a textbook: normalisation, units, signs, factors of 2 and 2pi, Jacobians of a change of variables, which array enters the formula.",
+  "recompute_recipes": [
+    "Parseval: integrate a saved PSD and compare with the time-domain variance.",
+    "Convert one reported number to the other unit or variable (Hz to nm, B_nu to B_lambda) and compare.",
+    "Check a conserved quantity (energy, norm, probability) along a saved trajectory."
+  ],
+  "eval_cases": ["case01", "case02", "case03", "case07", "case08"]
+}

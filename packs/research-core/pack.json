@@ -1,0 +1,18 @@
+{
+  "id": "research-core",
+  "version": "1.0.0",
+  "title": "Research core",
+  "description": "Experiment design items shared by every computational experiment, analysis, evaluation or simulation.",
+  "extends": [],
+  "applies_when": {
+    "always_for": "any experiment, analysis, evaluation or simulation, or the design of one",
+    "globs": [],
+    "keywords": []
+  },
+  "trace_targets": "The comparison the conclusion rests on: which conditions, controls and baselines were run, on what data, chosen when.",
+  "recompute_recipes": [
+    "Recount n per condition from the saved outputs and compare with the write-up.",
+    "Recompute the headline difference from per-run results instead of the reported summary."
+  ],
+  "eval_cases": ["case01", "case02", "case03", "case04", "case05", "case06", "case07", "case08", "case09", "case10"]
+}

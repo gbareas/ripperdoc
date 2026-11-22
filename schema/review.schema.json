@@ -153,6 +153,11 @@
             "type": "string",
             "minLength": 1,
             "description": "Where the number comes from: file:line and the equation or reference it implements (trace), or the saved output file used (recompute)"
+          },
+          "checklist_item": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$",
+            "description": "Optional: the domain-pack checklist item that raised this, as <pack>.<item>, e.g. physics.jacobian. The pack must be listed in packs."
           }
         }
       },
@@ -248,6 +253,11 @@
               "pattern": "^[a-z]+:"
             },
             "description": "Ensemble merge only: the source issues this issue stands for, as <reviewer>:<issue id>, e.g. a:R1-02"
+          },
+          "checklist_item": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$",
+            "description": "Optional: the domain-pack checklist item that raised this, as <pack>.<item>, e.g. physics.jacobian. The pack must be listed in packs."
           }
         }
       }
@@ -436,6 +446,28 @@
         }
       },
       "description": "Merged review only: member blocking issues or contradicted verifications that the merge did not keep"
+    },
+    "packs": {
+      "type": "array",
+      "description": "Domain packs loaded for this review (packs/<id>/pack.json), with the version read. Optional; absent in reviews made before packs existed.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "version"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+          }
+        }
+      }
     }
   }
 }

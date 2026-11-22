@@ -3,12 +3,15 @@
 
   validate.py review  <report.md | review.json>   # uses the last ```json block of a .md
   validate.py dossier <dossier.json>
+  validate.py packs   [<packs dir>]                 # every packs/<id>/pack.json + checklist.md
 
 Exit 0 = valid. Otherwise prints one error per line and exits 1.
 """
 import json, os, re, sys
 
 SCHEMA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "schema")
+PACKS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "packs")
+ITEM_RE = re.compile(r"^### ([a-z][a-z0-9-]*\.[a-z0-9-]+)\s*$", re.M)
 TYPES = {"object": dict, "array": list, "string": str, "boolean": bool, "number": (int, float)}
 
 
@@ -100,6 +103,77 @@ def ensemble_rules(r, path, errs):
         errs.append("merged verdict is milder than a member's, but nothing was dismissed to justify it")
 
 
+def load_packs(packs_dir=PACKS_DIR):
+    """{id: {"manifest": dict, "items": [item ids in checklist.md order]}} for every pack folder."""
+    packs = {}
+    if not os.path.isdir(packs_dir):
+        return packs
+    for name in sorted(os.listdir(packs_dir)):
+        d = os.path.join(packs_dir, name)
+        if not os.path.isdir(d):
+            continue
+        entry = {"manifest": None, "items": [], "error": None}
+        try:
+            entry["manifest"] = json.load(open(os.path.join(d, "pack.json")))
+            entry["items"] = ITEM_RE.findall(open(os.path.join(d, "checklist.md")).read())
+        except (OSError, ValueError) as e:
+            entry["error"] = str(e)
+        packs[name] = entry
+    return packs
+
+
+def pack_rules(packs, errs, case_ids=None):
+    schema = json.load(open(os.path.join(SCHEMA_DIR, "pack.schema.json")))
+    for name, p in packs.items():
+        if p["error"]:
+            errs.append(f"pack {name}: {p['error']}"); continue
+        m = p["manifest"]
+        check(m, schema, f"pack {name}", errs)
+        if m.get("id") != name:
+            errs.append(f"pack {name}: id {m.get('id')!r} must equal the folder name")
+        if not p["items"]:
+            errs.append(f"pack {name}: checklist.md has no '### {name}.<item>' headings")
+        if len(p["items"]) != len(set(p["items"])):
+            errs.append(f"pack {name}: duplicate checklist item ids")
+        for item in p["items"]:
+            if not item.startswith(name + "."):
+                errs.append(f"pack {name}: checklist item {item} must start with '{name}.'")
+        for ext in m.get("extends", []):
+            if ext not in packs: errs.append(f"pack {name}: extends unknown pack {ext}")
+            if ext == name: errs.append(f"pack {name}: extends itself")
+        if case_ids is not None:
+            for c in m.get("eval_cases", []):
+                if c not in case_ids: errs.append(f"pack {name}: eval case {c} is not in evals/answers.json")
+
+
+def packs_used_rules(r, errs, packs):
+    """A review that lists packs must name installed packs at their current version, include what they
+    extend, and tag issues/verifications only with items of listed packs."""
+    listed = {}
+    for p in r.get("packs", []):
+        pid, ver = p.get("id"), p.get("version")
+        if pid in listed: errs.append(f"packs: {pid} listed twice")
+        listed[pid] = ver
+        inst = packs.get(pid)
+        if not inst or not inst["manifest"]:
+            errs.append(f"packs: unknown pack {pid}"); continue
+        if inst["manifest"].get("version") != ver:
+            errs.append(f"packs: {pid} version {ver} does not match the installed {inst['manifest'].get('version')}")
+        for ext in inst["manifest"].get("extends", []):
+            if ext not in [x.get("id") for x in r.get("packs", [])]:
+                errs.append(f"packs: {pid} extends {ext}, which must be listed too")
+    tagged = [(f"issues {i.get('id')}", i.get("checklist_item")) for i in r.get("issues", [])]
+    tagged += [(f"verifications[{n}]", v.get("checklist_item")) for n, v in enumerate(r.get("verifications", []))]
+    for where, item in tagged:
+        if not item:
+            continue
+        pid = item.split(".", 1)[0]
+        if pid not in listed:
+            errs.append(f"{where}: checklist_item {item} belongs to pack {pid}, which is not in packs")
+        elif pid in packs and item not in packs[pid]["items"]:
+            errs.append(f"{where}: checklist_item {item} does not exist in packs/{pid}/checklist.md")
+
+
 def review_rules(r, errs, path=""):
     issues = r.get("issues", [])
     ids = [i.get("id") for i in issues]
@@ -139,6 +213,8 @@ def review_rules(r, errs, path=""):
         ensemble_rules(r, path, errs)
     elif r.get("dismissed") or any(i.get("merged_from") for i in issues):
         errs.append("dismissed / merged_from are only for a merged review (set ensemble_of)")
+    if r.get("packs") or any(x.get("checklist_item") for x in issues + vers):
+        packs_used_rules(r, errs, load_packs())
     by_id = {i.get("id"): i for i in issues}
     for f in r.get("code_findings", []):
         if f.get("affects_result") in ("yes", "unknown"):
@@ -163,6 +239,16 @@ def dossier_rules(d, errs):
 
 
 def main():
+    if len(sys.argv) in (2, 3) and sys.argv[1] == "packs":
+        d = sys.argv[2] if len(sys.argv) == 3 else PACKS_DIR
+        answers = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "evals", "answers.json")
+        cases = set(json.load(open(answers))["cases"]) if os.path.exists(answers) else None
+        packs, errs = load_packs(d), []
+        if not packs: errs.append(f"no packs in {d}")
+        pack_rules(packs, errs, cases)
+        if errs:
+            print("\n".join(errs)); sys.exit(1)
+        print(f"valid packs: {', '.join(packs)}"); return
     if len(sys.argv) != 3 or sys.argv[1] not in ("review", "dossier"):
         print(__doc__); sys.exit(2)
     kind, path = sys.argv[1:]

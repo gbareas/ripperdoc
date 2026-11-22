@@ -8,7 +8,8 @@ Mechanical floor for Ripperdoc's ensemble mode, so nothing is averaged away:
   - nice-to-have issues raised by one member only are left out (the merge step may re-add them),
   - verdict = the most severe member verdict, confidence = the lowest,
   - verifications: contradicted ones first, then confirmed, then the rest (max 3),
-  - reviewer_disagreements lists differing verdicts and every blocking issue only one member raised.
+  - reviewer_disagreements lists differing verdicts and every blocking issue only one member raised,
+  - packs = the union of the members' packs (carried issues keep their checklist_item).
 The draft is a starting point: the merge step dedupes issues (joining merged_from lists),
 re-verifies disputed blocking issues, moves the ones that do not stand to `dismissed` with a
 reason, and writes the final report. validate.py checks that every member blocking issue ends
@@ -70,6 +71,12 @@ def main():
         "dismissed": [],
         "reviewer_disagreements": disagreements,
     }
+    packs = {}
+    for _, m in members:
+        for pk in m.get("packs", []):
+            packs.setdefault(pk["id"], pk)
+    if packs:
+        draft["packs"] = list(packs.values())
     if verdict == "accept":
         draft.update(stop=True, stop_reason="no_blocking_issues")
     json.dump(draft, open(out, "w"), indent=2)
