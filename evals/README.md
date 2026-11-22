@@ -34,4 +34,4 @@ Make `cases/caseNN/` with the producer's files and a `FINDINGS.md` that states g
 
 ## Baselines
 
-`baselines/` holds the scores of accepted configurations, one file each (model, Claude Code version, commit, per-case outcome in every repeat, majority). `m0.json` is the first one: 7/7 flawed cases caught in all 3 runs; case08 and case09 were false blocks because their write-ups had real inconsistencies, fixed afterwards. Compare a new run against the latest baseline before changing `SKILL.md`, a pack, the guard or the model.
+`baselines/` holds the scores of accepted configurations, one file each (model, Claude Code version, commit, per-case outcome in every repeat, majority). `m0.json` is the first one: 7/7 flawed cases caught and 3/3 clean cases passed in all 3 runs. case08 and case09 were first false blocks because their write-ups had real inconsistencies; after the fix they passed 3/3 (the file keeps both). Compare a new run against the latest baseline before changing `SKILL.md`, a pack, the guard or the model.
