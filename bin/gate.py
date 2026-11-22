@@ -288,14 +288,22 @@ def review(root, claim, policy):
     return decide(root, claim, policy)
 
 
-INIT_SETTINGS = """Add to the project's .claude/settings.json (merge with existing hooks):
+INIT_SETTINGS = """1. Add to the project's .claude/settings.json (merge with existing hooks):
 {{
   "hooks": {{
     "PreToolUse": [{{"matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
                     "hooks": [{{"type": "command", "command": "python3 \\"{rd}/hooks/producer_guard.py\\""}}]}}],
     "Stop": [{{"hooks": [{{"type": "command", "command": "python3 \\"{rd}/hooks/stop_gate.py\\"", "timeout": 3600}}]}}]
   }}
-}}"""
+}}
+
+2. Add to the project's CLAUDE.md:
+When a result is ready, write a claim manifest in .ripperdoc/claims/<slug>.json (format: .ripperdoc/claim.schema.json)
+before finishing. Do not review the result yourself first: Ripperdoc reviews it when you finish, and if it
+blocks you, fix the work as its actions say and finish again. Never edit ripperdoc_reviews/ or .ripperdoc/policy.json.
+
+3. Headless runs (claude -p): the producer needs the tools to redo its work, e.g.
+   --allowedTools "Bash(python3:*)" Read Write Edit Glob Grep"""
 
 
 def claims_from(root, arg):
@@ -316,6 +324,9 @@ def main(argv):
             print(f"wrote {p} (default policy: accept with confidence >= 3, ensemble on, 3 rounds, no reruns)")
         else:
             print(f"kept existing {p}")
+        import shutil
+        shutil.copy(os.path.join(SCHEMA_DIR, "claim.schema.json"), os.path.join(root, ".ripperdoc", "claim.schema.json"))
+        print(f"copied the claim format to {os.path.join(root, '.ripperdoc', 'claim.schema.json')}")
         print(INIT_SETTINGS.format(rd=RD))
         return 0
     try:

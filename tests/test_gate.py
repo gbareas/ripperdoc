@@ -281,6 +281,13 @@ class ProducerGuard(Project):
             self.assertEqual(self.guard("Bash", {"command": cmd}), 2, cmd)
         for cmd in [f"{ROOT}/bin/ripperdoc-gate init", f"{ROOT}/bin/ripperdoc-gate review x; rm -rf ripperdoc_reviews"]:
             self.assertEqual(self.guard("Bash", {"command": cmd}), 2, cmd)
+        for cmd in ["cat .ripperdoc/policy.json > /tmp/x", "cat .ripperdoc/policy.json | tee .ripperdoc/policy.json",
+                    "ls ripperdoc_reviews; rm -rf ripperdoc_reviews", "cat $(echo .ripperdoc/policy.json)",
+                    "grep x ripperdoc_reviews/a.md && touch ripperdoc_reviews/b.md", "head .ripperdoc/policy.json\nrm x"]:
+            self.assertEqual(self.guard("Bash", {"command": cmd}), 2, cmd)
+        for cmd in ["cat .ripperdoc/policy.json", "ls ripperdoc_reviews .ripperdoc", "head -n 40 ripperdoc_reviews/2026-11-22_x_r1.md",
+                    "grep -n verdict ripperdoc_reviews/2026-11-22_x_r1.md", "wc -l .ripperdoc/policy.json"]:
+            self.assertEqual(self.guard("Bash", {"command": cmd}), 0, cmd)
         for cmd in ["python analysis.py", "ls out", "cat .ripperdoc/claims/psd-peak.json",
                     f"{ROOT}/bin/ripperdoc-gate review .ripperdoc/claims/psd-peak.json", "ripperdoc-gate check --all"]:
             self.assertEqual(self.guard("Bash", {"command": cmd}), 0, cmd)
@@ -298,7 +305,11 @@ class Init(Project):
         self.assertEqual((pol["pass_verdicts"], pol["min_confidence"], pol["ensemble"], pol["max_rounds"]), (["accept"], 3, True, 3))
         self.assertIn("stop_gate.py", p.stdout)
         self.assertIn("producer_guard.py", p.stdout)
-        json.loads(p.stdout[p.stdout.index("{"):])  # the printed settings are valid JSON
+        s = p.stdout
+        json.loads(s[s.index("{"):s.index("\n2. ")])  # the printed settings are valid JSON
+        self.assertTrue(os.path.exists(os.path.join(self.root, ".ripperdoc", "claim.schema.json")))
+        self.assertIn("CLAUDE.md", s)
+        self.assertIn("--allowedTools", s)
 
 
 if __name__ == "__main__":

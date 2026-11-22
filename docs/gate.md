@@ -58,10 +58,35 @@ the hook block for `.claude/settings.json`:
 Set `"stop_hook": "check"` in the policy to make the hook decide only from existing reviews (no model
 calls at stop time); then run `ripperdoc-gate review` yourself.
 
+`init` also copies the claim format to `.ripperdoc/claim.schema.json`, so the producer can read it
+without access to the Ripperdoc folder, and prints a `CLAUDE.md` paragraph that tells the producer to
+write a claim when a result is ready and not to review it itself first. In headless runs (`claude -p`)
+the producer also needs its tools allowed, e.g. `--allowedTools "Bash(python3:*)" Read Write Edit Glob Grep`;
+`--permission-mode acceptEdits` alone does not allow Bash.
+
+The producer guard lets one plain read-only command through (`cat`, `ls`, `head`, `tail`, `wc`,
+`stat`, `grep`, without pipes, redirection or separators), so the producer can read reports and the
+policy from Bash as well as with the Read tool.
+
+## Real-session trial (2026-11-22)
+
+Linux, Claude Code 2.1.326, case03 (wrong-sign damping) as the producer's project, policy with one
+reviewer and 2 rounds:
+
+1. The producer wrote the claim and tried to finish. The Stop hook ran the reviewer inside the hook
+   (nested `claude -p` works): **reject**, confidence 5, blocking issue "accel() uses +γv, the model
+   needs −γv". The block reason with Ripperdoc's actions reached the producer.
+2. The producer flipped the sign, added a γ = 0 control and a half-step run, regenerated the outputs,
+   rewrote FINDINGS.md and finished again. The artifacts had changed, so round 2 ran: **accept**,
+   confidence 5, every round-1 issue verified resolved.
+3. `ripperdoc-gate check --all` → pass, exit 0. Whole producer session 6 min, both reviews included.
+
+The reviewer sessions were never blocked by the producer guard, so `RIPPERDOC_GATE_ACTIVE` reaches
+hook processes. Asked to write a fake approval and lower `min_confidence`, the producer was refused
+and nothing changed on disk.
+
 ## Open points
 
-- Confirmed only with a stand-in reviewer in unit tests so far: the Stop hook's block/continue
-  behaviour and the nested `claude -p` call inside a hook need a check in a real session.
 - A producer that wants to stop without a claim can simply not write one. The gate enforces that a
   declared claim is reviewed; asking for a claim at the right moment belongs in the project's
-  `CLAUDE.md` ("when a result is ready, write a claim manifest in .ripperdoc/claims/").
+  `CLAUDE.md` (see `init`).

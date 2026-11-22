@@ -17,6 +17,9 @@ GATE_ENV = "RIPPERDOC_GATE_ACTIVE"
 MARKERS = ("ripperdoc_reviews", ".ripperdoc/policy", ".ripperdoc/state", GATE_ENV)
 # Running the gate itself is allowed (it is how a producer asks for a review), as a plain command only.
 GATE_CMD = re.compile(r"^\s*\S*ripperdoc-gate\s+(check|review)\s+[\w./-]+\s*$")
+# Reading is fine: one plain read-only command, no redirection, pipes, separators or substitution.
+READ_ONLY = {"cat", "ls", "head", "tail", "wc", "stat", "grep"}
+SHELL_META = re.compile(r"[;&|<>`$()\n\\]")
 
 
 def deny(msg):
@@ -72,6 +75,9 @@ def main():
     elif tool == "Bash":
         cmd = ti.get("command", "")
         if GATE_CMD.match(cmd):
+            sys.exit(0)
+        words = cmd.split()
+        if words and words[0] in READ_ONLY and not SHELL_META.search(cmd):
             sys.exit(0)
         rd_dir = review_dir_name(find_root(cwd))
         for m in MARKERS + (RD, rd_dir if rd_dir != "ripperdoc_reviews" else "ripperdoc_reviews"):
