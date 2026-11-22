@@ -137,10 +137,22 @@ class Reviews(unittest.TestCase):
         r["packs"].append({"id": "chemistry", "version": "1.0.0"})
         self.bad(r, "unknown pack chemistry")
 
-    def test_version_mismatch(self):
-        r = with_packs("research-core", "physics")
-        r["packs"][1]["version"] = "0.9.0"
-        self.bad(r, "does not match the installed")
+    def bump(self, r, idx, v):
+        r["packs"][idx]["version"] = v
+        return r
+
+    def test_minor_version_difference_still_checks_items(self):
+        major = version("physics").split(".")[0]
+        self.ok(self.bump(revise(with_packs("research-core", "physics", issues=[blocking("physics.units")])), 1, f"{major}.99.0"))
+        self.bad(self.bump(revise(with_packs("research-core", "physics", issues=[blocking("physics.vibes")])), 1, f"{major}.99.0"), "does not exist")
+
+    def test_other_major_version_stays_valid_without_item_check(self):
+        # an old review must not turn invalid when a pack's items are renamed in a new major version
+        other = str(int(version("physics").split(".")[0]) + 1) + ".0.0"
+        self.ok(self.bump(revise(with_packs("research-core", "physics", issues=[blocking("physics.renamed-item")])), 1, other))
+
+    def test_other_major_still_needs_pack_listed(self):
+        self.bad(revise(with_packs("research-core", issues=[blocking("physics.units")])), "not in packs")
 
     def test_extended_pack_must_be_listed(self):
         self.bad(with_packs("physics"), "extends research-core")

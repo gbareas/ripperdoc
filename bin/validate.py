@@ -147,9 +147,11 @@ def pack_rules(packs, errs, case_ids=None):
 
 
 def packs_used_rules(r, errs, packs):
-    """A review that lists packs must name installed packs at their current version, include what they
-    extend, and tag issues/verifications only with items of listed packs."""
-    listed = {}
+    """A review that lists packs must name installed packs, include what they extend, and tag
+    issues/verifications only with items of listed packs. Item ids are checked against the installed
+    checklist when the review's pack version has the installed major version; a review made with
+    another major version stays valid and its item ids are not checked (items may have been renamed)."""
+    listed, other_major = {}, set()
     for p in r.get("packs", []):
         pid, ver = p.get("id"), p.get("version")
         if pid in listed: errs.append(f"packs: {pid} listed twice")
@@ -157,8 +159,9 @@ def packs_used_rules(r, errs, packs):
         inst = packs.get(pid)
         if not inst or not inst["manifest"]:
             errs.append(f"packs: unknown pack {pid}"); continue
-        if inst["manifest"].get("version") != ver:
-            errs.append(f"packs: {pid} version {ver} does not match the installed {inst['manifest'].get('version')}")
+        installed = inst["manifest"].get("version", "")
+        if str(ver).split(".")[0] != installed.split(".")[0]:
+            other_major.add(pid)  # made with another major version: its item ids may have changed, so skip them
         for ext in inst["manifest"].get("extends", []):
             if ext not in [x.get("id") for x in r.get("packs", [])]:
                 errs.append(f"packs: {pid} extends {ext}, which must be listed too")
@@ -170,7 +173,7 @@ def packs_used_rules(r, errs, packs):
         pid = item.split(".", 1)[0]
         if pid not in listed:
             errs.append(f"{where}: checklist_item {item} belongs to pack {pid}, which is not in packs")
-        elif pid in packs and item not in packs[pid]["items"]:
+        elif pid in packs and pid not in other_major and item not in packs[pid]["items"]:
             errs.append(f"{where}: checklist_item {item} does not exist in packs/{pid}/checklist.md")
 
 

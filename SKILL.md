@@ -245,5 +245,5 @@ Experiment design items (controls, baselines, confounds, power, reproducibility,
 - Round 1: `previous_issues` empty, `keep_or_revert: "n/a"`. Later rounds: `previous_issues` filled, `keep_or_revert` is `keep` or `revert`.
 - `stop` agrees with `stop_reason`; `worklog` has at least one line per round; issue ids are unique (use `R<round>-<nn>` and keep ids stable across rounds).
 - With `intake.code_review_file` set, `code_findings` must be present; every `yes`/`unknown` finding names an `issue_id` that exists in `issues` with category `code_defect`.
-- `packs`: each listed pack exists in `packs/` at the listed `version`, and every pack it `extends` is listed too. A `checklist_item` on an issue or verification names an item that exists in the checklist of a listed pack.
+- `packs`: each listed pack exists in `packs/`, and every pack it `extends` is listed too. A `checklist_item` on an issue or verification belongs to a listed pack and, when the listed `version` has the installed major version, names an item that exists in its checklist. (Bump a pack's major version when you rename or remove items; minor and patch bumps keep old reviews fully checked.)
 - Dossier: unique ids, `tests_hypotheses` refer to existing hypotheses, a reviewed work_done entry names its `review_file`, a pre-registered hypothesis has a `frozen_ref`.

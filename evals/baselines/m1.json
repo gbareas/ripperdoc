@@ -1,0 +1,149 @@
+{
+  "_note": "M1 (2026-11-22): SKILL.md core + domain packs (PR #8, b80e9a2). Same config as m0. Run 3 was interrupted during case07 and resumed for case07-case10; case01-06 kept. Pack choice was identical in all 3 runs; 81 of 87 issues carried a checklist_item.",
+  "config": {
+    "claude_code": "2.1.326",
+    "reviewer_model": "claude-opus-5-5 (agent model: inherit)",
+    "repo_commit": "b80e9a2",
+    "repeats": 3,
+    "web_tools": "disabled",
+    "machine": "Linux with bwrap"
+  },
+  "cases": {
+    "case01": {
+      "runs": [
+        "CAUGHT",
+        "CAUGHT",
+        "CAUGHT"
+      ],
+      "majority": "CAUGHT",
+      "packs": "research-core+physics",
+      "checklist_item": "physics.normalisation"
+    },
+    "case02": {
+      "runs": [
+        "CAUGHT",
+        "CAUGHT",
+        "CAUGHT"
+      ],
+      "majority": "CAUGHT",
+      "packs": "research-core+physics",
+      "checklist_item": "physics.jacobian"
+    },
+    "case03": {
+      "runs": [
+        "CAUGHT",
+        "CAUGHT",
+        "CAUGHT"
+      ],
+      "majority": "CAUGHT",
+      "packs": "research-core+physics",
+      "checklist_item": "physics.signs-conventions"
+    },
+    "case04": {
+      "runs": [
+        "CAUGHT",
+        "CAUGHT",
+        "CAUGHT"
+      ],
+      "majority": "CAUGHT",
+      "packs": "research-core+ml",
+      "checklist_item": "ml.baseline-parity (3/3), ml.metric-definition (2/3)"
+    },
+    "case05": {
+      "runs": [
+        "CAUGHT",
+        "CAUGHT",
+        "CAUGHT"
+      ],
+      "majority": "CAUGHT",
+      "packs": "research-core+ml",
+      "checklist_item": "ml.seed-selection"
+    },
+    "case06": {
+      "runs": [
+        "CAUGHT",
+        "CAUGHT",
+        "CAUGHT"
+      ],
+      "majority": "CAUGHT",
+      "packs": "research-core+ml",
+      "checklist_item": "ml.split-leakage"
+    },
+    "case07": {
+      "runs": [
+        "CAUGHT",
+        "CAUGHT",
+        "CAUGHT"
+      ],
+      "majority": "CAUGHT",
+      "packs": "research-core+physics",
+      "checklist_item": "physics.background"
+    },
+    "case08": {
+      "runs": [
+        "PASS",
+        "PASS",
+        "PASS"
+      ],
+      "majority": "PASS",
+      "packs": "research-core+physics"
+    },
+    "case09": {
+      "runs": [
+        "PASS",
+        "PASS",
+        "PASS"
+      ],
+      "majority": "PASS",
+      "packs": "research-core+ml"
+    },
+    "case10": {
+      "runs": [
+        "PASS",
+        "PASS",
+        "PASS"
+      ],
+      "majority": "PASS",
+      "packs": "research-core+ml"
+    }
+  },
+  "totals": [
+    {
+      "run": 1,
+      "caught": 7,
+      "flagged": 0,
+      "missed": 0,
+      "pass": 3,
+      "false_block": 0,
+      "rerun": 0,
+      "invalid": 0,
+      "wall_time": "23m09s"
+    },
+    {
+      "run": 2,
+      "caught": 7,
+      "flagged": 0,
+      "missed": 0,
+      "pass": 3,
+      "false_block": 0,
+      "rerun": 0,
+      "invalid": 0,
+      "wall_time": "22m29s"
+    },
+    {
+      "run": 3,
+      "caught": 7,
+      "flagged": 0,
+      "missed": 0,
+      "pass": 3,
+      "false_block": 0,
+      "rerun": 0,
+      "invalid": 0,
+      "wall_time": "about 26m (resumed)"
+    }
+  ],
+  "vs_previous": {
+    "baseline": "m0.json",
+    "result": "no regression: identical outcomes on every case"
+  }
+}
