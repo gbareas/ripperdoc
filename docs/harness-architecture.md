@@ -204,7 +204,7 @@ never fixes anything.
    cannot loop; at the cap it lets the session stop and prints the escalation. A `SubagentStop`
    variant gates a producer subagent inside a larger workflow. `experiment-review` becomes a
    thin caller of `ripperdoc-gate review`.
-2. **GitHub Action** (`.github/actions/ripperdoc-gate`). On a PR, runs `check` (cheap, no model)
+2. **GitHub Action** (deferred, decision 1) (`.github/actions/ripperdoc-gate`). On a PR, runs `check` (cheap, no model)
    by default; `review` only on a label, because it costs tokens. Posts the decision as a check
    run.
 3. **CLI / Agent SDK.** `ripperdoc-gate review` with JSON on stdout is enough for any other
@@ -265,7 +265,7 @@ schema/review.schema.json   + optional packs, checklist_item, artifact_hashes
 schema/{claim,policy,pack}.schema.json   new
 skills/experiment-review/   calls the gate
 evals/cases/<pack>/..., evals/<pack>/answers.json, evals/baselines/, run.sh, score.py, compare.py
-.github/workflows/tests.yml + benchmark.yml (label / manual)
+.github/workflows/tests.yml (benchmark.yml deferred, decision 4)
 docs/harness-architecture.md (this file)
 ```
 
@@ -279,26 +279,29 @@ behaviour without a benchmark comparison.
 | M0 | **First baseline.** Run the current 10 cases (n=3) on the current setup and commit the scores. Everything after this is measured against it. Needs Claude Code on a machine with bwrap; costs ~30 reviews. | scorer tests for repeats and majority (score.py) |
 | M1 | **Core / pack split.** Move research items out of Appendix A into `packs/research-core`, `physics`, `ml`; add `pack.json` schema, `packs` and `checklist_item` fields. Benchmark must not regress vs. M0. | pack manifest validation, old reviews still valid, `checklist_item` must name a loaded pack |
 | M2 | **Gate + Claude Code adapter.** `ripperdoc-gate` (check/review), claim and policy schemas, artifact hashing, producer guard, Stop hook with loop protection; `experiment-review` calls the gate. Confirm hook semantics in a real session. | decision table (pass/block/escalate) for every policy branch, stale-hash detection, round cap, producer guard blocks forged reviews and policy edits, stop hook never blocks when `stop_hook_active` and the cap is reached |
-| M3 | **Benchmark harness.** Per-pack layout, repeats, cost capture, `compare.py` with the regression rule, `benchmark.yml` on label; `gate/` cases. | compare.py regression rule on synthetic score files, case-layout lint (no answer key inside a case) |
-| M4 | **Software pack** with its cases, and the GitHub Action adapter. | as M1 for the pack; action runs `check` on a fixture repo |
+| M3 | **Benchmark harness.** Per-pack layout, repeats, cost capture, `compare.py` with the regression rule (run locally, decision 4); `gate/` cases. | compare.py regression rule on synthetic score files, case-layout lint (no answer key inside a case) |
+| M4 | **Software pack** with its cases. (GitHub Action adapter deferred, see decision 1.) | as M1 for the pack |
 | M5 | Ablations (ensemble vs. single, model pairs) and a short results section in the README. | none new |
 
 Already open and folded in: real `sandbox-run` test on Linux and macOS (before M0), and the
 README fixes Guillem deferred (after M1, since the layout changes).
 
-## 6. Decisions for Guillem
+## 6. Decisions (settled 2026-11-22)
 
-1. **Gate trigger.** Recommended: explicit claim manifest + Stop hook (the producer says what it
-   claims; the hook enforces that a claim is reviewed). Alternative: Stop hook reviews whatever
-   changed in the session, with no manifest; simpler for the producer, but the reviewer has to
-   guess the claim.
-2. **Default pass bar.** Recommended: `accept` with confidence ≥ 3, ensemble on. Lower to single
-   reviewer for exploratory work via policy.
-3. **Software pack scope.** Recommended: claims about software (fix, perf, coverage), not a
-   general code reviewer, so it complements `/code-review` instead of duplicating it.
-4. **Benchmark budget.** M0 and every benchmark run cost real tokens and need a machine with
-   bwrap. Where and how often you want to pay for them decides whether the label-triggered CI
-   job or local runs come first.
+1. **Gate trigger: claim manifest + Stop hook.** The producer writes a claim manifest when it
+   believes the work is done; the Stop hook does not let the session finish while a declared
+   claim lacks a fresh `pass`. Considered and not chosen: Stop hook reviewing whatever changed
+   (claim has to be guessed), manual-only (nothing enforced), triggering on writes to listed
+   result files, and a GitHub PR check. The PR check is deferred, not rejected: M4 ships the
+   software pack without it.
+2. **Default pass bar: `accept` with confidence ≥ 3, ensemble on.** A policy can switch to a
+   single reviewer for exploratory work.
+3. **Software pack scope: claims about software** (fix, perf, coverage), not a general code
+   reviewer, so it complements `/code-review` instead of duplicating it.
+4. **Benchmark: run locally, when Guillem chooses.** M0 runs on his Linux machine (bwrap
+   available), n = 3 per case, about 30 reviews. Later runs: after changes to `SKILL.md`, a
+   pack, the guard or the model. No label-triggered CI job and no API key in GitHub for now;
+   `benchmark.yml` drops out of M3 and can be added later.
 
 ## 7. Out of scope
 
